@@ -1,0 +1,89 @@
+# Pages CMS configuration — https://pagescms.org/docs/configuration/
+# Log in at https://app.pagescms.org with GitHub, open the "yazartsgallery" repo.
+media:
+  input: images
+  output: /images
+  categories: [image]
+  rename: safe
+
+content:
+  - name: gallery
+    label: Gallery
+    type: file
+    path: content/gallery.json
+    format: json
+    fields:
+      - name: artworks
+        label: Artworks (drag the handle to reorder; the first one shows first on the site)
+        type: object
+        list:
+          collapsible:
+            collapsed: true
+            summary: "{index}. {title}"
+        fields:
+          - name: image
+            label: Image
+            type: image
+            required: true
+            options:
+              path: images/artworks
+          - name: title
+            label: Title (optional)
+            type: string
+          - name: caption
+            label: Caption
+            type: text
+
+  - name: site
+    label: Site settings
+    type: file
+    path: content/site.json
+    format: json
+    fields:
+      - name: commissionsOpen
+        label: Commissions open?
+        type: boolean
+        description: Switch off to show the "closed" message instead.
+      - name: commissionText
+        label: Message when commissions are OPEN
+        type: text
+      - name: commissionClosedText
+        label: Message when commissions are CLOSED
+        type: text
+      - name: links
+        label: Social links (drag to reorder)
+        type: object
+        list:
+          collapsible:
+            collapsed: true
+            summary: "{label}"
+        fields:
+          - name: label
+            label: Name (e.g. Instagram, TikTok)
+            type: string
+            required: true
+          - name: url
+            label: Link (starts with https://)
+            type: string
+            required: true
+            pattern: ^https?://.+
+      - name: about
+        label: About text
+        type: text
+      - name: tagline
+        label: Tagline under the title
+        type: string
+      - name: heroImage
+        label: Banner image (wide image, e.g. 2400 × 900)
+        type: image
+        options:
+          path: images/site
+      - name: heroTitle
+        label: Banner title, line 1
+        type: string
+      - name: heroSubtitle
+        label: Banner title, line 2
+        type: string
+      - name: siteName
+        label: Site name (top-left logo and browser tab)
+        type: string

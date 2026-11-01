@@ -1,0 +1,44 @@
+{
+  "artworks": [
+    {
+      "image": "/images/artworks/placeholder-1.svg",
+      "title": "Placeholder 1",
+      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+    },
+    {
+      "image": "/images/artworks/placeholder-2.svg",
+      "title": "Placeholder 2",
+      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+    },
+    {
+      "image": "/images/artworks/placeholder-3.svg",
+      "title": "Placeholder 3",
+      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+    },
+    {
+      "image": "/images/artworks/placeholder-4.svg",
+      "title": "Placeholder 4",
+      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+    },
+    {
+      "image": "/images/artworks/placeholder-5.svg",
+      "title": "Placeholder 5",
+      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+    },
+    {
+      "image": "/images/artworks/placeholder-6.svg",
+      "title": "Placeholder 6",
+      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+    },
+    {
+      "image": "/images/artworks/placeholder-7.svg",
+      "title": "Placeholder 7",
+      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+    },
+    {
+      "image": "/images/artworks/placeholder-8.svg",
+      "title": "Placeholder 8",
+      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+    }
+  ]
+}

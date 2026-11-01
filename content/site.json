@@ -1,0 +1,25 @@
+{
+  "siteName": "yazartsgallery",
+  "heroTitle": "yazarts",
+  "heroSubtitle": "gallery",
+  "tagline": "Digital art by @yazarts",
+  "heroImage": "/images/site/banner-placeholder.svg",
+  "about": "Hi, I'm Yaz, a digital artist sharing my favourite pieces here. I love soft colour, quiet moods and abstract shapes. (Placeholder text, edit it in the CMS under Site settings.)",
+  "commissionsOpen": true,
+  "commissionText": "Commissions are open! Send me a message on Instagram, or support my work on Ko-fi.",
+  "commissionClosedText": "Commissions are closed for now. Follow me on Instagram to hear when they reopen.",
+  "links": [
+    {
+      "label": "Instagram",
+      "url": "https://instagram.com/yazarts"
+    },
+    {
+      "label": "Reddit",
+      "url": "https://www.reddit.com/user/yaz_arts"
+    },
+    {
+      "label": "Ko-fi",
+      "url": "https://ko-fi.com/yazarts"
+    }
+  ]
+}
