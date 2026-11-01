@@ -4,9 +4,12 @@
   "description": "Static art portfolio for @yazarts (GitHub Pages + Pages CMS). No build step; this file is only for local dev tools.",
   "scripts": {
     "serve": "python3 -m http.server 8090",
-    "check": "node scripts/check.js"
+    "check": "node scripts/check.js",
+    "test:db": "node scripts/test-db.js",
+    "fake": "node scripts/fake-supabase.js"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.14",
     "js-yaml": "^4.1.0",
     "playwright-core": "^1.48.0"
   }
