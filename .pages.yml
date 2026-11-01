@@ -67,17 +67,6 @@ content:
             type: string
             required: true
             pattern: ^https?://.+
-      - name: contactIntro
-        label: Text above the message form
-        type: text
-      - name: commissionTypes
-        label: Commission types visitors can pick
-        type: string
-        list: true
-      - name: budgetOptions
-        label: Budget options visitors can pick
-        type: string
-        list: true
       - name: about
         label: About text
         type: text
@@ -99,22 +88,3 @@ content:
         label: Site name (top-left logo and browser tab)
         type: string
 
-  - name: integrations
-    label: Integrations (messages, likes, comments)
-    type: file
-    path: content/integrations.json
-    format: json
-    fields:
-      - name: supabaseUrl
-        label: Supabase Project URL
-        type: string
-        description: "Looks like https://abcdefgh.supabase.co (Supabase → Project Settings → Data API / Connect). Leave empty to switch messages, likes, views and comments off."
-        pattern: ^(https://[a-z0-9-]+\.supabase\.co)?$
-      - name: supabaseKey
-        label: Supabase publishable key
-        type: string
-        description: "Starts with sb_publishable_ (Supabase → Project Settings → API Keys). It is meant to be public. NEVER paste the secret key here."
-      - name: web3formsAccessKey
-        label: Web3Forms access key
-        type: string
-        description: "From the email Web3Forms sent you. Used only for the 'new message' notification email."
