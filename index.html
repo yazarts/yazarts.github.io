@@ -65,17 +65,26 @@
 <footer class="foot"><span>© <span id="yr"></span> <span id="footName">yazartsgallery</span></span><span>All artwork © @yazarts</span></footer>
 
 <div class="lightbox" id="lb" role="dialog" aria-modal="true" aria-label="Artwork viewer" hidden>
+  <div class="lb-bg" aria-hidden="true"></div>
+  <div class="lb-tint" id="lbTint" aria-hidden="true"></div>
+  <div class="lb-glow" id="lbGlow" aria-hidden="true"></div>
+  <div class="lb-stage" id="lbStage" aria-roledescription="carousel" aria-label="Artworks. Swipe or use the arrow keys to browse, pinch or double-tap to zoom.">
+    <div class="lb-track" id="lbTrack"></div>
+    <button class="lb-btn lb-prev" id="lbPrev" aria-label="Previous artwork"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="lb-btn lb-next" id="lbNext" aria-label="Next artwork"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+  <div class="lb-panel" id="lbPanel">
+    <div class="lb-text" id="lbText">
+      <h2 class="lb-title" id="lbTitle"></h2>
+      <p class="lb-cap" id="lbCap"></p>
+      <div class="lb-meta">
+        <button class="like" type="button" id="lbLike" aria-pressed="false" aria-label="Like"><svg aria-hidden="true"><use href="#i-heart"/></svg><span class="n" hidden></span></button>
+        <span class="lb-idx" id="lbIdx"></span>
+      </div>
+    </div>
+  </div>
   <button class="lb-btn lb-close" id="lbClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-  <button class="lb-btn lb-prev" id="lbPrev" aria-label="Previous artwork"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-  <button class="lb-btn lb-next" id="lbNext" aria-label="Next artwork"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-  <figure class="lb-figure" id="lbFig">
-    <img id="lbImg" alt="">
-    <figcaption>
-      <strong id="lbTitle"></strong><span id="lbCap"></span>
-      <div class="lb-meta"><button class="like" type="button" id="lbLike" aria-pressed="false" aria-label="Like"><svg aria-hidden="true"><use href="#i-heart"/></svg><span class="n" hidden></span></button></div>
-      <small id="lbIdx"></small>
-    </figcaption>
-  </figure>
+  <p class="sr" id="lbLive" aria-live="polite"></p>
 </div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

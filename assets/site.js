@@ -104,7 +104,7 @@
 
   function paint(id) {
     const on = !!liked()[id], n = counts[id];
-    document.querySelectorAll(`.like[data-art="${id}"]${!lb.hidden && art[idx]?.id === id ? ', #lbLike' : ''}`).forEach(b => {
+    document.querySelectorAll(`.like[data-art="${id}"]${!lb.hidden && art[panelI]?.id === id ? ', #lbLike' : ''}`).forEach(b => {
       b.setAttribute('aria-pressed', on);
       b.setAttribute('aria-label', (on ? 'Liked' : 'Like') + (n != null ? ` (${n} like${n === 1 ? '' : 's'})` : ''));
       const c = b.querySelector('.n'); c.hidden = n == null; c.textContent = n != null ? fmt(n) : '';
@@ -140,7 +140,7 @@
         <div class="meta"><button class="like" type="button" data-art="${esc(a.id)}" aria-pressed="false" aria-label="Like"><svg aria-hidden="true"><use href="#i-heart"/></svg><span class="n" hidden></span></button></div></div>`;
     }).join('');
     grid.querySelectorAll('.card').forEach(t => { observe(t); t.addEventListener('transitionend', () => t.classList.add('done'), { once: true }); });
-    grid.querySelectorAll('img').forEach(im => { if (im.complete) im.classList.add('ok'); });
+    grid.querySelectorAll('img').forEach((im, i) => { const ok = () => { im.classList.add('ok'); if (im.naturalWidth) art[i].aspect = im.naturalWidth / im.naturalHeight; }; im.complete ? ok() : im.addEventListener('load', ok, { once: true }); });
     grid.querySelectorAll('.like').forEach(b => { paint(b.dataset.art); cio ? cio.observe(b) : loadCount(b.dataset.art); });
     $('#empty').hidden = art.length > 0;
   }
@@ -149,33 +149,243 @@
     const b = e.target.closest('.like'); if (b) like(b.dataset.art, b);
   });
 
-  // ---------- lightbox ----------
-  const lb = $('#lb'), img = $('#lbImg'); let idx = 0, lastFocus;
-  function show(i) {
-    idx = (i + art.length) % art.length; const a = art[idx];
-    const apply = () => {
-      img.src = asset(a.image); img.alt = a.title || a.caption || 'Artwork';
-      $('#lbTitle').textContent = a.title || ''; $('#lbCap').textContent = a.caption || '';
-      $('#lbIdx').textContent = `${idx + 1} / ${art.length}`;
-      img.onload = () => img.classList.remove('swap'); if (img.complete) img.classList.remove('swap');
-      paint(a.id); loadCount(a.id);
-    };
-    if (!lb.hidden && !reduce) { img.classList.add('swap'); setTimeout(apply, 200); } else apply();
+  // ---------- viewer: shared-element open/close, tinted backdrop, swipe carousel, pinch/double-tap zoom ----------
+  const lb = $('#lb'), stage = $('#lbStage'), track = $('#lbTrack'), textEl = $('#lbText'), tintEl = $('#lbTint'), glowEl = $('#lbGlow');
+  const EASE = 'cubic-bezier(.22,.8,.24,1)', GAP = 28;
+  let idx = 0, panelI = -1, lastFocus = null, W = 0, offset = 0, pendingK = 0, animTimer = 0, closing = false, flyer = null;
+  const N = () => art.length, wrap = (i) => ((i % N()) + N()) % N();
+  const tileImg = (i) => document.querySelector(`#grid .tile[data-i="${i}"] img`);
+  const slides = [0, 1, 2].map(() => { const s = document.createElement('div'); s.className = 'lb-slide'; s.innerHTML = '<img alt="" draggable="false">'; track.appendChild(s); return s; });
+  const curImg = () => slides[1].firstElementChild;   // slides = [previous, current, next]
+
+  // size each image to "contain" inside its slide (explicit size so small images still fill the space and zoom maths stay exact)
+  function fit(im) {
+    const s = im.parentElement, cs = getComputedStyle(s);
+    const bw = s.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), bh = s.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const a = im.naturalWidth ? im.naturalWidth / im.naturalHeight : (art[+s.dataset.i]?.aspect || 0.75);
+    let w = bw, h = w / a; if (h > bh) { h = bh; w = h * a; }
+    im.style.width = Math.max(0, w) + 'px'; im.style.height = Math.max(0, h) + 'px';
   }
-  function open(i) { lastFocus = document.activeElement; lb.hidden = false; show(i); document.body.style.overflow = 'hidden';
-    requestAnimationFrame(() => requestAnimationFrame(() => lb.classList.add('open'))); $('#lbClose').focus({ preventScroll: true }); }
-  function close() { lb.classList.remove('open'); setTimeout(() => { lb.hidden = true; document.body.style.overflow = ''; lastFocus?.focus?.({ preventScroll: true }); }, reduce ? 0 : 380); }
-  $('#lbClose').onclick = close; $('#lbPrev').onclick = () => show(idx - 1); $('#lbNext').onclick = () => show(idx + 1);
-  $('#lbLike').onclick = () => art[idx] && like(art[idx].id, $('#lbLike'));
-  lb.addEventListener('click', e => { if (e.target === lb || e.target.id === 'lbFig') close(); });
+  function fill(slot, i) {
+    const s = slides[slot], im = s.firstElementChild, j = wrap(i), a = art[j], src = asset(a.image);
+    s.dataset.i = j; s.setAttribute('aria-hidden', slot !== 1); im.alt = slot === 1 ? (a.title || a.caption || 'Artwork') : '';
+    if (im.getAttribute('src') !== src) { im.style.opacity = ''; im.onload = () => { fit(im); if (j === panelI) setTint(j); }; im.src = src; }
+    fit(im);
+  }
+  function place() { slides.forEach((s, k) => { s.style.transform = `translate3d(${(k - 1) * (W + GAP)}px,0,0)`; }); slides[0].hidden = slides[2].hidden = N() < 2; }
+  function setOffset(x, ms = 0) { offset = x; track.style.transition = ms ? `transform ${ms}ms ${EASE}` : 'none'; track.style.transform = `translate3d(${x}px,0,0)`; }
+  function layout() { W = stage.clientWidth; place(); slides.forEach(s => fit(s.firstElementChild)); }
+
+  // ----- ambient tint: average colour of the artwork (weighted towards saturated pixels), always kept dark -----
+  const tints = new Map();
+  function colourOf(src, el) {
+    if (tints.has(src)) return tints.get(src);
+    if (!el || !el.naturalWidth) return null;
+    try {
+      const c = document.createElement('canvas'); c.width = c.height = 36; const x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(el, 0, 0, 36, 36); const d = x.getImageData(0, 0, 36, 36).data;
+      let R = 0, G = 0, B = 0, T = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0, l = (mx + mn) / 510;
+        const w = (0.04 + sat * sat) * (l > 0.06 && l < 0.96 ? 1 : 0.15); R += r * w; G += g * w; B += b * w; T += w;
+      }
+      const r = R / T / 255, g = G / T / 255, b = B / T / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), dl = mx - mn;
+      let h = 0; if (dl) h = mx === r ? ((g - b) / dl) % 6 : mx === g ? (b - r) / dl + 2 : (r - g) / dl + 4;
+      const L = (mx + mn) / 2, S = dl ? dl / (1 - Math.abs(2 * L - 1)) : 0;
+      const t = { h: Math.round((h * 60 + 360) % 360), s: Math.min(0.62, S * 1.1 + 0.04) }; tints.set(src, t); return t;
+    } catch { return null; }
+  }
+  function setTint(i) {
+    const a = art[i]; if (!a) return; const src = asset(a.image);
+    const t = colourOf(src, tileImg(i)) || colourOf(src, slides.find(s => +s.dataset.i === i)?.firstElementChild);
+    const s = t ? Math.round(t.s * 100) : 0;
+    tintEl.style.backgroundColor = t ? `hsl(${t.h} ${s}% 13% / .86)` : 'rgba(12,20,32,.7)';    // lightness clamped to 13%: dark, art stays the focus
+    glowEl.style.backgroundColor = t ? `hsl(${t.h} ${Math.min(80, s + 15)}% 34%)` : 'transparent';
+    lb.dataset.tint = t ? `${t.h},${s}` : '';
+  }
+
+  // ----- right-hand (desktop) / below-image (mobile) text panel -----
+  let panelTimer = 0;
+  function setPanel(i, animate) {
+    if (i === panelI) return; panelI = i; const a = art[i];
+    const apply = () => {
+      $('#lbTitle').textContent = a.title || ''; $('#lbTitle').hidden = !a.title;
+      $('#lbCap').textContent = a.caption || ''; $('#lbCap').hidden = !a.caption;
+      $('#lbIdx').textContent = `${i + 1} / ${N()}`;
+      $('#lbLive').textContent = `Artwork ${i + 1} of ${N()}${a.title ? ': ' + a.title : ''}`;
+      paint(a.id); loadCount(a.id); textEl.classList.remove('swap');
+    };
+    clearTimeout(panelTimer);
+    if (animate && !reduce) { textEl.classList.add('swap'); panelTimer = setTimeout(apply, 170); } else apply();
+    setTint(i);
+  }
+
+  // ----- carousel -----
+  function go(k, v = 0) {
+    if (N() < 2) k = 0;
+    if (animTimer) commit();
+    const target = -k * (W + GAP), dist = Math.abs(target - offset);
+    pendingK = k; setPanel(wrap(idx + k), true);
+    if (reduce || dist < 1) { setOffset(target); commit(); return; }
+    const sp = Math.abs(v), ms = Math.round(Math.max(200, Math.min(460, sp > 0.25 ? dist / sp * 1.8 : 240 + dist * 0.25)));
+    setOffset(target, ms); animTimer = setTimeout(commit, ms + 20);
+  }
+  function commit() {
+    clearTimeout(animTimer); animTimer = 0; const k = pendingK; pendingK = 0;
+    if (!k) { setOffset(0); return; }
+    resetZoom(curImg()); idx = wrap(idx + k);
+    if (k > 0) slides.push(slides.shift()); else slides.unshift(slides.pop());
+    setOffset(0); place(); fill(0, idx - 1); fill(1, idx); fill(2, idx + 1);
+  }
+  function grab() {   // finger lands while a slide is still moving: catch it where it is
+    if (!animTimer) return;
+    const m = new DOMMatrixReadOnly(getComputedStyle(track).transform);
+    clearTimeout(animTimer); animTimer = 0; pendingK = 0; setOffset(m.m41);
+  }
+
+  // ----- zoom (per image: translate + scale, origin top-left) -----
+  const Z = new WeakMap(), zs = (im) => Z.get(im) || { s: 1, tx: 0, ty: 0 };
+  function applyZ(im, z, ms = 0) {
+    Z.set(im, z); im.style.transition = ms && !reduce ? `transform ${ms}ms ${EASE}` : 'none';
+    im.style.transform = z.s === 1 && !z.tx && !z.ty ? '' : `translate3d(${z.tx}px,${z.ty}px,0) scale(${z.s})`;
+    if (im === curImg()) lb.classList.toggle('zoomed', z.s > 1.01);
+  }
+  const resetZoom = (im, ms = 0) => applyZ(im, { s: 1, tx: 0, ty: 0 }, ms);
+  function geom(im) { const r = im.getBoundingClientRect(), z = zs(im); return { ox: r.left - z.tx, oy: r.top - z.ty, w: r.width / z.s, h: r.height / z.s }; }
+  function clampZ(im, z, g = geom(im)) {
+    const S = stage.getBoundingClientRect(), s = Math.max(1, Math.min(6, z.s));
+    const lim = (o, len, t, s0, sl) => { const L = len * s; return L <= sl ? len * (1 - s) / 2 : Math.min(s0 - o, Math.max(s0 + sl - L - o, t)); };
+    return { s, tx: lim(g.ox, g.w, z.tx, S.left, S.width), ty: lim(g.oy, g.h, z.ty, S.top, S.height) };
+  }
+  function zoomAt(im, s, cx, cy, ms = 0) {
+    const z = zs(im), g = geom(im); s = Math.max(1, Math.min(6, s));
+    const tx = (cx - g.ox) - (s / z.s) * (cx - g.ox - z.tx), ty = (cy - g.oy) - (s / z.s) * (cy - g.oy - z.ty);
+    applyZ(im, clampZ(im, { s, tx, ty }, g), ms);
+  }
+  const toggleZoom = (x, y) => { const im = curImg(); zs(im).s > 1.01 ? resetZoom(im, 280) : zoomAt(im, 2.5, x, y, 300); };
+
+  // ----- one gesture engine for mouse, pen and touch -----
+  // 1 finger at zoom 1 → horizontal drag moves the carousel 1:1; 2 fingers → pinch zoom (never navigates);
+  // 1 finger while zoomed → pan. Once a second finger has touched, nothing navigates until every finger is lifted.
+  const pts = new Map(); let gest = null, multi = false, st = null, pinch = null, samples = [], lastTap = null;
+  const dist2 = () => { const [a, b] = [...pts.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+  stage.addEventListener('pointerdown', e => {
+    if (e.target.closest('button') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    e.preventDefault(); try { stage.setPointerCapture(e.pointerId); } catch { }
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const im = curImg();
+    if (pts.size === 1) {
+      multi = false; grab(); const z = zs(im);
+      st = { x: e.clientX, y: e.clientY, t: performance.now(), off: offset, tx: z.tx, ty: z.ty, onImg: e.target === im, type: e.pointerType };
+      samples = [{ x: e.clientX, t: st.t }]; gest = z.s > 1.01 ? 'pan' : 'pending';
+    } else if (pts.size === 2) {
+      multi = true;
+      if (gest === 'drag' || offset) go(0);                 // a second finger cancels any slide in progress
+      gest = 'pinch'; const m = dist2(), z = zs(im), g = geom(im); pinch = { d: m.d, x: m.x, y: m.y, ...z, g };
+      im.style.transition = 'none';
+    }
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const im = curImg(), dx = e.clientX - st.x, dy = e.clientY - st.y;
+    if (gest === 'pinch' && pts.size >= 2) {
+      const m = dist2(), s = Math.max(0.85, Math.min(7, pinch.s * m.d / pinch.d)), g = pinch.g;
+      applyZ(im, { s, tx: (m.x - g.ox) - (s / pinch.s) * (pinch.x - g.ox - pinch.tx), ty: (m.y - g.oy) - (s / pinch.s) * (pinch.y - g.oy - pinch.ty) });
+    } else if (gest === 'pending' && !multi) {
+      if (Math.abs(dx) > 7 && Math.abs(dx) > Math.abs(dy) * 1.1) { gest = 'drag'; stage.classList.add('dragging'); st.off = offset; }
+      else if (Math.abs(dy) > 12) gest = 'none';
+    } else if (gest === 'drag') {
+      let x = st.off + (e.clientX - st.x); if (N() < 2) x *= 0.3;
+      setOffset(x); const t = performance.now(); samples.push({ x: e.clientX, t }); while (samples.length > 2 && t - samples[0].t > 100) samples.shift();
+    } else if (gest === 'pan') {
+      const z = zs(im); applyZ(im, clampZ(im, { s: z.s, tx: st.tx + dx, ty: st.ty + dy }));
+    }
+  });
+  function endPointer(e) {
+    if (!pts.has(e.pointerId)) return; pts.delete(e.pointerId);
+    const im = curImg();
+    if (gest === 'pinch') {
+      if (pts.size === 1) { const [p] = [...pts.values()], z = zs(im); st = { ...st, x: p.x, y: p.y, tx: z.tx, ty: z.ty }; gest = z.s > 1.01 ? 'pan' : 'none'; }
+      if (pts.size <= 1) { const z = zs(im); z.s < 1.05 ? resetZoom(im, 240) : applyZ(im, clampZ(im, z), 240); }
+      if (pts.size === 0) gest = null;
+      return;
+    }
+    if (pts.size) return;
+    const g = gest; gest = null; stage.classList.remove('dragging');
+    if (g === 'drag' && !multi) {
+      const a = samples[0], b = samples[samples.length - 1], v = b && a && b.t > a.t ? (b.x - a.x) / (b.t - a.t) : 0;
+      const p = -(offset + v * 220) / (W + GAP); go(p > 0.32 ? 1 : p < -0.32 ? -1 : 0, v); return;
+    }
+    const moved = Math.hypot(e.clientX - st.x, e.clientY - st.y), quick = performance.now() - st.t < 350;
+    if ((g === 'pending' || (g === 'pan' && moved < 10 && quick)) && !multi && e.type === 'pointerup') {          // a tap / click
+      const now = performance.now();
+      if (st.type === 'mouse') { if (st.onImg) toggleZoom(e.clientX, e.clientY); else close(); return; }
+      if (lastTap && now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40) { lastTap = null; toggleZoom(e.clientX, e.clientY); }
+      else lastTap = { t: now, x: e.clientX, y: e.clientY };
+      return;
+    }
+    if (g === 'pan') applyZ(im, clampZ(im, zs(im)), 200);
+    if (offset && !animTimer) go(0);
+  }
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => stage.addEventListener(t, endPointer));
+  // trackpad pinch / ctrl+wheel zooms the artwork (not the page); plain wheel pans while zoomed
+  lb.addEventListener('wheel', e => {
+    e.preventDefault(); const im = curImg(), z = zs(im);
+    if (e.ctrlKey) zoomAt(im, z.s * Math.exp(-e.deltaY * 0.012), e.clientX, e.clientY);
+    else if (z.s > 1.01) applyZ(im, clampZ(im, { s: z.s, tx: z.tx - e.deltaX, ty: z.ty - e.deltaY }));
+  }, { passive: false });
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => lb.addEventListener(t, e => e.preventDefault()));   // Safari: no page pinch-zoom inside the viewer
+  lb.addEventListener('touchmove', e => { if (e.touches.length > 1 || !e.target.closest('.lb-panel')) e.preventDefault(); }, { passive: false });
+  lb.addEventListener('dblclick', e => e.preventDefault());
+
+  // ----- open / close with a shared-element "flight" between the thumbnail and the viewer -----
+  function onScreen(el) { if (!el) return null; const r = el.getBoundingClientRect(); return r.width && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth ? r : null; }
+  function fly(from, to, src, r0, r1, ms) {
+    flyer?.remove(); const g = flyer = document.createElement('div'); g.className = 'lb-flyer'; g.innerHTML = `<img alt="" src="${esc(src)}">`; lb.appendChild(g);
+    const k = (r, rad) => ({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: rad + 'px' });
+    return g.animate([k(from, r0), k(to, r1)], { duration: ms, easing: 'cubic-bezier(.2,.75,.2,1)', fill: 'forwards' }).finished.catch(() => { });
+  }
+  async function open(i) {
+    if (!lb.hidden || !art.length) return;
+    lastFocus = document.activeElement; idx = i; panelI = -1; closing = false;
+    const sb = innerWidth - document.documentElement.clientWidth; lb.hidden = false; document.body.style.overflow = 'hidden'; if (sb > 0) document.body.style.paddingRight = sb + 'px';
+    layout(); fill(0, i - 1); fill(1, i); fill(2, i + 1); setOffset(0); setPanel(i, false);
+    $('#lbClose').focus({ preventScroll: true });
+    const thumb = tileImg(i), r0 = !reduce && onScreen(thumb), im = curImg();
+    requestAnimationFrame(() => lb.classList.add('open'));
+    if (!r0) return;
+    im.style.opacity = '0'; thumb.style.visibility = 'hidden';
+    await fly(r0, im.getBoundingClientRect(), thumb.currentSrc || thumb.src, 14, 10, 420);
+    try { await im.decode(); } catch { }
+    im.style.opacity = ''; thumb.style.visibility = ''; flyer?.remove(); flyer = null;
+  }
+  async function close() {
+    if (lb.hidden || closing) return; closing = true;
+    if (animTimer) commit(); if (offset) setOffset(0);
+    const im = curImg(); resetZoom(im);
+    const card = document.querySelector(`#grid .tile[data-i="${idx}"]`)?.closest('.card');
+    if (card) { card.classList.add('in', 'done'); if (!onScreen(card.querySelector('img'))) card.scrollIntoView({ block: 'center', behavior: 'instant' }); }
+    const thumb = tileImg(idx), r1 = !reduce && onScreen(thumb), r0 = im.getBoundingClientRect();
+    lb.classList.remove('open');
+    if (r1 && r0.width) {
+      thumb.style.visibility = 'hidden'; im.style.opacity = '0';
+      await fly(r0, r1, im.currentSrc || im.src, 10, 14, 380);
+      thumb.style.visibility = '';
+    } else await new Promise(r => setTimeout(r, reduce ? 0 : 320));
+    lb.hidden = true; im.style.opacity = ''; flyer?.remove(); flyer = null; document.body.style.overflow = ''; document.body.style.paddingRight = ''; closing = false;
+    lastFocus?.focus?.({ preventScroll: true });
+  }
+  $('#lbClose').onclick = close; $('#lbPrev').onclick = () => go(-1); $('#lbNext').onclick = () => go(1);
+  $('#lbLike').onclick = () => art[panelI] && like(art[panelI].id, $('#lbLike'));
+  addEventListener('resize', () => { if (!lb.hidden) { if (animTimer) commit(); layout(); setOffset(0); resetZoom(curImg()); } });
   addEventListener('keydown', e => {
     if (lb.hidden) return;
-    if (e.key === 'Escape') return close();
-    if (e.key === 'Tab') { const f = [...lb.querySelectorAll('button')].filter(x => x.offsetParent); const k = f.indexOf(document.activeElement); e.preventDefault(); f[(k + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus(); return; }
-    if (e.key === 'ArrowLeft') show(idx - 1); else if (e.key === 'ArrowRight') show(idx + 1);
+    if (e.key === 'Escape') { e.preventDefault(); return zs(curImg()).s > 1.01 ? resetZoom(curImg(), 240) : close(); }
+    if (e.key === 'Tab') { const f = [...lb.querySelectorAll('button')].filter(x => x.offsetParent && getComputedStyle(x).visibility !== 'hidden'); const k = f.indexOf(document.activeElement); e.preventDefault(); f[(k + (e.shiftKey ? -1 : 1) + f.length) % f.length]?.focus(); return; }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); } else if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
+    else if (e.key === '+' || e.key === '=') { const r = curImg().getBoundingClientRect(); zoomAt(curImg(), zs(curImg()).s * 1.5, r.left + r.width / 2, r.top + r.height / 2, 200); }
+    else if (e.key === '-' || e.key === '0') resetZoom(curImg(), 200);
   });
-  let sx = null; lb.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
-  lb.addEventListener('touchend', e => { if (sx == null) return; const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) show(idx + (dx < 0 ? 1 : -1)); sx = null; });
 
   Promise.all([json('content/site.json').catch(() => ({})), json('content/gallery.json').catch(() => ({ artworks: [] }))]).then(([s, g]) => {
     art = (g.artworks || []).filter(a => a && a.image).map(a => ({ ...a, id: artId(a.image) }));

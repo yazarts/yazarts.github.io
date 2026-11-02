@@ -93,9 +93,9 @@ Everything here is free.
 ## For developers
 
 ```
-index.html              the one page (nav, banner, gallery with likes, about, connect, lightbox)
+index.html              the one page (nav, banner, gallery with likes, about, connect, viewer)
 assets/style.css        styles: dark navy, steel blue and caramel; Quicksand and Nunito fonts
-assets/site.js          loads content/*.json, renders the grid, likes (Abacus), lightbox, scroll fade-ins
+assets/site.js          loads content/*.json, renders the grid, likes (Abacus), the artwork viewer, scroll fade-ins
 content/gallery.json    { "artworks": [ { "image", "title", "caption" } ] }   (order = display order)
 content/site.json       siteName, heroTitle/heroSubtitle, tagline, heroImage, about,
                         commissionsOpen, commissionText, commissionClosedText, links[]
@@ -106,10 +106,11 @@ scripts/                local helpers (not deployed): placeholder generator, scr
 ```
 
 * **Preview locally:** `python3 -m http.server 8090`, then open http://localhost:8090. It needs a local server, because opening the file directly blocks `fetch` of the JSON.
-* **Checks and screenshots:** `npm install && npm run check` (needs Chrome at `/usr/bin/google-chrome` or `CHROME_PATH`, and the local server running). The like counter API is **mocked** inside the browser, so the tests never change the real counts. They cover counts, one like per browser, the lightbox, the API being down or rate-limited, and request throttling.
+* **Checks and screenshots:** `npm install && npm run check` (needs Chrome at `/usr/bin/google-chrome` or `CHROME_PATH`, and the local server running). The like counter API is **mocked** inside the browser, so the tests never change the real counts. They cover counts, one like per browser, the viewer (open/close animation, tint, keyboard, focus trap), touch gestures on a phone (swipe, pinch, double-tap), the API being down or rate-limited, and request throttling.
 * **Likes:** `assets/site.js` calls `https://abacus.jasoncameron.dev/get/yazartsgallery/like-<file-name>` to read a count and `/hit/…` to add one (keys are created on the first like; an unknown key returns 404, which shows as 0). Abacus is free, needs no signup, allows CORS and has a limit of 30 requests per 10 s per visitor, so the site loads counts lazily as cards scroll into view through a small queue (max 24 per 10 s). Counters expire after 6 months without any reads or likes; every page view reads them, so they stay alive while the site has visitors. Requests time out after 8 s and the count hides. Likes that fail are kept in `localStorage` (`yaz.pendingLikes`) and retried on the next visit. Liked pieces are stored in `yaz.liked`.
 * **Image paths:** the CMS writes paths like `/images/artworks/x.jpg`. `site.js` strips the leading `/` so they resolve both at `user.github.io/yazartsgallery/` and on a custom domain.
-* **Motion:** gentle fade-ins, soft hover lift and zoom, and a fading lightbox. All of it is disabled under `prefers-reduced-motion`.
+* **Viewer:** clicking a thumbnail (3:4, cropped from the centre) flies it into the viewer. On wide screens the artwork sits on the left with the title, description, heart and "3 / 8" on the right; on phones the title and description sit under the image. The backdrop is tinted with a darkened version of the artwork's own colour. Swipe (or ← → / the arrow buttons) slides between pieces like a phone gallery; pinch, double-tap, click or ctrl+scroll zooms, and swiping is paused while zoomed. Esc resets the zoom, then closes.
+* **Motion:** gentle fade-ins, soft hover lift and zoom, and the viewer animations. Under `prefers-reduced-motion` everything switches instantly.
 
 ## Limitations
 * Changes take about 1 to 2 minutes to go live (GitHub Actions plus Pages caching). There's no instant preview of unsaved edits.
