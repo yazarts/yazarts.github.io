@@ -6,7 +6,10 @@
       "description": "First test album",
       "music": "/audio/AUDIO-2026-11-02-02-53-00.mp3",
       "artworks": [
-        {}
+        {
+          "image": "/images/albums/img1600.jpeg",
+          "title": "Duck "
+        }
       ]
     }
   ]
