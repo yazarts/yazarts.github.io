@@ -30,6 +30,16 @@ jobs:
           cp -r index.html assets content images .nojekyll _site/
           [ -f CNAME ] && cp CNAME _site/ || true
           [ -f 404.html ] && cp 404.html _site/ || true
+          [ -d audio ] && cp -r audio _site/ || true
+      - uses: actions/setup-python@v5
+        continue-on-error: true
+        with:
+          python-version: '3.12'
+      - name: Make small grid previews (originals are published untouched)
+        continue-on-error: true
+        run: |
+          python -m pip install --quiet pillow
+          python scripts/make_thumbs.py _site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -57,6 +57,26 @@ Under every artwork (and in the full-size viewer) there's a small heart with the
 * Counts belong to the image **file name**, so reordering or retitling a piece keeps its likes. Uploading a different file starts that piece at zero.
 * Nothing to set up or log into. If the counter service is ever down or slow, the numbers just hide; the hearts still work and those likes are sent the next time the visitor comes back.
 
+### Views
+Next to the heart there's an eye with the number of views. A view is counted when someone opens a piece in the full-size viewer (once per piece per browser visit). Same free counter service as the likes, nothing to set up.
+
+### Gallery: two rows + "View more"
+The Gallery shows two rows (4 per row on a computer, 2 on a phone). If there are more artworks, the last slot shows **View more** and the number left; clicking it smoothly opens the full grid, with **Show less** at the bottom.
+
+### Albums
+1. Click **Albums** in the left menu, then **Add an entry** under *Albums*.
+2. **Album name**, **Album cover** (square works best), optional **Description**.
+3. **Album music (optional…)**: upload an mp3, m4a, ogg or wav. It starts playing when a visitor opens the album and stops when they close it (the background music pauses meanwhile). Click the ✕ / remove on the field to take the music off.
+4. Under **Artworks in this album**, click **Add an entry** for each piece: **Image**, **Title (optional)**, **Caption**. Drag the handles to reorder.
+5. Click **Save**. To delete an album, open its menu (⋯) in the list and choose **Remove**, then **Save**.
+Until the first album is saved, the site shows a small "Albums coming soon" card. Inside an album, the background and the viewer are tinted with the cover's colour.
+
+### Background music
+In **Site settings**, **Background music (optional…)**: upload a light track (mp3/m4a/ogg/wav, ideally a few MB). It loops softly (35 % volume). Browsers don't allow sound before a visitor interacts, so it starts right away where allowed, otherwise on the visitor's first click, tap or key press. The small blue equalizer next to the site name toggles it (the choice is remembered). Remove the file and **Save** to turn the music off; the icon disappears.
+
+### Image quality
+Your uploads are published exactly as uploaded (Pages CMS never resizes or recompresses them). The grid uses small previews made automatically at publish time so the page loads fast; opening a piece always loads your original file at full resolution, and zooming in shows full detail. For the sharpest result, export from your drawing app at full canvas size and upload that file (not a screenshot or a "shared" copy from a chat app).
+
 ### Other things you can change in Site settings
 About text, the tagline under the title, the banner image (use a wide picture, e.g. 2400 × 900), the two lines of the banner title, and the site name.
 
@@ -93,9 +113,9 @@ Everything here is free.
 ## For developers
 
 ```
-index.html              the one page (nav, banner, gallery with likes, about, connect, viewer)
+index.html              the one page (nav + music toggle, banner, gallery, albums, about, connect, album view, viewer)
 assets/style.css        styles: dark navy, steel blue and caramel; Quicksand and Nunito fonts
-assets/site.js          loads content/*.json, renders the grid, likes (Abacus), the artwork viewer, scroll fade-ins
+assets/site.js          loads content/*.json, renders the grid (2 rows + View more), albums, likes + views (Abacus), music, the artwork viewer
 content/gallery.json    { "artworks": [ { "image", "title", "caption" } ] }   (order = display order)
 content/site.json       siteName, heroTitle/heroSubtitle, tagline, heroImage, about,
                         commissionsOpen, commissionText, commissionClosedText, links[]
@@ -108,6 +128,10 @@ scripts/                local helpers (not deployed): placeholder generator, scr
 * **Preview locally:** `python3 -m http.server 8090`, then open http://localhost:8090. It needs a local server, because opening the file directly blocks `fetch` of the JSON.
 * **Checks and screenshots:** `npm install && npm run check` (needs Chrome at `/usr/bin/google-chrome` or `CHROME_PATH`, and the local server running). The like counter API is **mocked** inside the browser, so the tests never change the real counts. They cover counts, one like per browser, the viewer (open/close animation, tint, keyboard, focus trap), touch gestures on a phone (swipe, pinch, double-tap), the API being down or rate-limited, and request throttling.
 * **Likes:** `assets/site.js` calls `https://abacus.jasoncameron.dev/get/yazartsgallery/like-<file-name>` to read a count and `/hit/…` to add one (keys are created on the first like; an unknown key returns 404, which shows as 0). Abacus is free, needs no signup, allows CORS and has a limit of 30 requests per 10 s per visitor, so the site loads counts lazily as cards scroll into view through a small queue (max 24 per 10 s). Counters expire after 6 months without any reads or likes; every page view reads them, so they stay alive while the site has visitors. Requests time out after 8 s and the count hides. Likes that fail are kept in `localStorage` (`yaz.pendingLikes`) and retried on the next visit. Liked pieces are stored in `yaz.liked`.
+* **Counters:** likes `like-<file>` and views `view-<file>` in namespace `yazartsgallery`. Counts are read with `/info/…` (answers 200 with `exists:false` for keys nobody has hit yet, so there are no 404s in the console) and added with `/hit/…`. Views are hit when a piece becomes the current slide in the viewer, once per piece per browser session (`sessionStorage` `yaz.viewed`).
+* **Thumbnails / quality:** the deploy workflow runs `scripts/make_thumbs.py`, which writes WebP previews (max 1200 px) to `_site/thumbs/` and a map to `_site/content/thumbs.json` (the committed `content/thumbs.json` is just an empty placeholder). Only the grids use them; the viewer always loads the original file. Once a zoom settles, the viewer lays the image out at its real zoomed size (rather than only magnifying a screen-sized bitmap with a CSS transform), so browsers re-draw it from the full-resolution original. If thumbnail generation ever fails, the step is skipped and the grid falls back to the originals.
+* **Music:** `<audio id="bgAudio">` (site, volume 0.35, loop) and `<audio id="albumAudio">` (album, 0.6, loop). Autoplay is tried; if the browser blocks it, playback starts on the first pointerdown/keydown/touchend. The on/off choice is stored in `localStorage` `yaz.sound`. Uploads go to `audio/` (media source "music" in `.pages.yml`).
+* **Local test site:** `bash scripts/make_test_site.sh` builds `/tmp/yaz-test-site` (a copy with a TEST album, extra pieces and generated tones, never committed), serve it on :8091, then `node scripts/check.js` (Abacus mocked) saves screenshots to `screenshots/` (git-ignored).
 * **Image paths:** the CMS writes paths like `/images/artworks/x.jpg`. `site.js` strips the leading `/` so they resolve both at `user.github.io/yazartsgallery/` and on a custom domain.
 * **Viewer:** clicking a thumbnail (3:4, cropped from the centre) flies it into the viewer. On wide screens the artwork sits on the left with the title, description, heart and "3 / 8" on the right; on phones the title and description sit under the image. The backdrop is tinted with a darkened version of the artwork's own colour. Swipe (or ← → / the arrow buttons) slides between pieces like a phone gallery; pinch, double-tap, click or ctrl+scroll zooms, and swiping is paused while zoomed. Esc resets the zoom, then closes.
 * **Motion:** gentle fade-ins, soft hover lift and zoom, and the viewer animations. Under `prefers-reduced-motion` everything switches instantly.

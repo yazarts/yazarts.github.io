@@ -5,7 +5,9 @@
   // CMS stores paths like "/images/x.jpg"; make them relative so the site works at user.github.io/yazartsgallery/ AND on a custom domain
   const asset = (p) => !p ? '' : /^(https?:)?\/\//.test(p) ? p : String(p).replace(/^\/+/, '');
   const json = (u) => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(u); return r.json(); });
-  let art = [];
+  let art = [], albums = [], thumbs = {};
+  // grid thumbnails are generated at deploy time (content/thumbs.json); the viewer always loads the untouched original
+  const thumb = (p) => thumbs[asset(p)] || asset(p);
 
   $('#yr').textContent = new Date().getFullYear();
   requestAnimationFrame(() => document.body.classList.add('loaded'));
@@ -17,7 +19,7 @@
   $('#menuBtn').addEventListener('click', () => { const o = nav.classList.toggle('menu-open'); $('#menuBtn').setAttribute('aria-expanded', o); });
   document.querySelectorAll('#menu a').forEach(a => a.addEventListener('click', () => { nav.classList.remove('menu-open'); $('#menuBtn').setAttribute('aria-expanded', false); }));
   const secIO = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) document.querySelectorAll('#menu a').forEach(a => a.classList.toggle('active', a.dataset.nav === e.target.id)); }), { rootMargin: '-45% 0px -50% 0px' });
-  ['home', 'gallery', 'about', 'connect'].forEach(id => secIO.observe(document.getElementById(id)));
+  ['home', 'gallery', 'albums', 'about', 'connect'].forEach(id => secIO.observe(document.getElementById(id)));
 
   // gentle fade-in on scroll
   const io = !reduce && 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -6% 0px', threshold: .05 }) : null;
@@ -92,29 +94,54 @@
       const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
       try {
         const r = await fetch(`${LIKES.api}/${path}`, { signal: ctl.signal, cache: 'no-store' });
-        if (r.status === 404) return resolve(0);                    // nobody liked it yet
+        if (r.status === 404) return resolve(0);                    // (not expected: /info answers 200 for new keys)
         if (r.status === 429) { pauseUntil = Date.now() + 10000; return reject(new Error('busy')); }
         if (!r.ok) return reject(new Error('http ' + r.status));
-        const d = await r.json(); Number.isFinite(d.value) ? resolve(d.value) : reject(new Error('bad'));
+        const d = await r.json(); if (d.exists === false) return resolve(0);   // nobody has liked / viewed it yet
+        Number.isFinite(d.value) ? resolve(Math.max(0, d.value)) : reject(new Error('bad'));
       } catch (e) { reject(e); } finally { clearTimeout(t); }
     }); pump();
   });
-  const getCount = (id) => api(`get/${LIKES.ns}/${likeKey(id)}`);
+  // "/info" answers 200 with {exists:false} for counters nobody has hit yet, so new pieces cause no 404s in the console
+  const getCount = (id) => api(`info/${LIKES.ns}/${likeKey(id)}`);
   const hitCount = (id) => api(`hit/${LIKES.ns}/${likeKey(id)}`);
+  const viewKey = (id) => `view-${id}`;
+  const views = {};                                    // artId -> number of views
+  const getViews = (id) => api(`info/${LIKES.ns}/${viewKey(id)}`);
+  const hitViews = (id) => api(`hit/${LIKES.ns}/${viewKey(id)}`);
 
   function paint(id) {
-    const on = !!liked()[id], n = counts[id];
-    document.querySelectorAll(`.like[data-art="${id}"]${!lb.hidden && art[panelI]?.id === id ? ', #lbLike' : ''}`).forEach(b => {
+    const on = !!liked()[id], n = counts[id], v = views[id];
+    document.querySelectorAll(`.like[data-art="${id}"]`).forEach(b => {
       b.setAttribute('aria-pressed', on);
       b.setAttribute('aria-label', (on ? 'Liked' : 'Like') + (n != null ? ` (${n} like${n === 1 ? '' : 's'})` : ''));
       const c = b.querySelector('.n'); c.hidden = n == null; c.textContent = n != null ? fmt(n) : '';
     });
+    document.querySelectorAll(`.views[data-art="${id}"]`).forEach(b => {
+      b.hidden = v == null; b.setAttribute('aria-label', v != null ? `${v} view${v === 1 ? '' : 's'}` : 'Views');
+      const c = b.querySelector('.n'); c.hidden = v == null; c.textContent = v != null ? fmt(v) : '';
+    });
   }
-  const requested = new Set();
+  const requested = new Set(), requestedV = new Set();
   function loadCount(id) {
-    if (requested.has(id)) return; requested.add(id);
-    getCount(id).then(v => { counts[id] = Math.max(v, counts[id] || 0); paint(id); })
-      .catch(() => { requested.delete(id); paint(id); });            // count stays hidden; retried next time it scrolls into view
+    if (!requested.has(id)) {
+      requested.add(id);
+      getCount(id).then(v => { counts[id] = Math.max(v, counts[id] || 0); paint(id); })
+        .catch(() => { requested.delete(id); paint(id); });          // count stays hidden; retried next time it scrolls into view
+    }
+    if (!requestedV.has(id) && !seenNow.has(id)) {
+      requestedV.add(id);
+      getViews(id).then(v => { views[id] = Math.max(v, views[id] || 0); paint(id); }).catch(() => { requestedV.delete(id); });
+    }
+  }
+  // a view = the piece was opened in the viewer; counted once per piece per browser session
+  const seenNow = new Set();
+  function countView(id) {
+    let seen; try { seen = JSON.parse(sessionStorage.getItem('yaz.viewed')) || {}; } catch { seen = {}; }
+    if (seen[id] || seenNow.has(id)) return; seenNow.add(id);
+    seen[id] = 1; try { sessionStorage.setItem('yaz.viewed', JSON.stringify(seen)); } catch { }
+    if (views[id] != null) { views[id]++; paint(id); }
+    hitViews(id).then(v => { views[id] = v; paint(id); }).catch(() => { });
   }
   const pop = (b) => { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); };
   function like(id, btn) {
@@ -128,33 +155,206 @@
       .catch(() => { const p = pending(); if (!p.includes(id)) store.set('yaz.pendingLikes', [...p, id]); });   // try again on the next visit
   }
 
-  // ---------- gallery grid ----------
+  // ---------- artwork cards (gallery + inside albums) ----------
   const cio = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) loadCount(e.target.dataset.art); }), { rootMargin: '400px 0px' }) : null;
-  function renderGrid() {
-    const grid = $('#grid');
-    grid.innerHTML = art.map((a, i) => {
-      const label = a.title || a.caption || `Artwork ${i + 1}`;
-      return `<div class="card fade" style="--d:${(i % 4) * 0.07}s"><button class="tile" data-i="${i}" aria-label="Open ${esc(label)}">
-        <img src="${esc(asset(a.image))}" alt="${esc(label)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" onload="this.classList.add('ok')">
-        ${a.title ? `<span class="cap">${esc(a.title)}</span>` : ''}</button>
-        <div class="meta"><button class="like" type="button" data-art="${esc(a.id)}" aria-pressed="false" aria-label="Like"><svg aria-hidden="true"><use href="#i-heart"/></svg><span class="n" hidden></span></button></div></div>`;
-    }).join('');
+  const cardHTML = (a, i) => {
+    const label = a.title || a.caption || `Artwork ${i + 1}`;
+    return `<div class="card fade" style="--d:${(i % 4) * 0.07}s"><button class="tile" data-i="${i}" aria-label="Open ${esc(label)}">
+      <img src="${esc(thumb(a.image))}" alt="${esc(label)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async">
+      ${a.title ? `<span class="cap">${esc(a.title)}</span>` : ''}</button>
+      <div class="meta"><button class="like" type="button" data-art="${esc(a.id)}" aria-pressed="false" aria-label="Like"><svg aria-hidden="true"><use href="#i-heart"/></svg><span class="n" hidden></span></button>
+      <span class="views" data-art="${esc(a.id)}" aria-label="Views" hidden><svg aria-hidden="true"><use href="#i-eye"/></svg><span class="n" hidden></span></span></div></div>`;
+  };
+  function renderCards(grid, list) {
+    grid.innerHTML = list.map(cardHTML).join('');
     grid.querySelectorAll('.card').forEach(t => { observe(t); t.addEventListener('transitionend', () => t.classList.add('done'), { once: true }); });
-    grid.querySelectorAll('img').forEach((im, i) => { const ok = () => { im.classList.add('ok'); if (im.naturalWidth) art[i].aspect = im.naturalWidth / im.naturalHeight; }; im.complete ? ok() : im.addEventListener('load', ok, { once: true }); });
+    grid.querySelectorAll('.tile img').forEach((im, i) => { const ok = () => { im.classList.add('ok'); if (im.naturalWidth && !list[i].aspect) list[i].aspect = im.naturalWidth / im.naturalHeight; }; im.complete && im.naturalWidth ? ok() : im.addEventListener('load', ok, { once: true }); im.addEventListener('error', () => im.classList.add('ok'), { once: true }); });
     grid.querySelectorAll('.like').forEach(b => { paint(b.dataset.art); cio ? cio.observe(b) : loadCount(b.dataset.art); });
+  }
+
+  // ---------- gallery: two rows, then a "View more" tile that expands the grid ----------
+  const grid = $('#grid'); let expanded = false;
+  const colCount = (g) => getComputedStyle(g).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+  function applyRows() {
+    const cards = [...grid.children], limit = colCount(grid) * 2, collapse = !expanded && cards.length > limit;
+    cards.forEach((c, i) => c.classList.toggle('extra', collapse && i >= limit));
+    grid.querySelectorAll('.tile.more').forEach(t => { t.classList.remove('more'); t.querySelector('.more-layer')?.remove(); t.setAttribute('aria-label', t.dataset.label); });
+    if (collapse) {
+      const t = cards[limit - 1].querySelector('.tile'), rest = cards.length - limit + 1;
+      t.classList.add('more'); t.setAttribute('aria-label', `View more artworks (${rest} more)`);
+      t.insertAdjacentHTML('beforeend', `<span class="more-layer" aria-hidden="true"><b>View more</b><small>+${rest}</small></span>`);
+    }
+    $('#gridMore').hidden = !(expanded && cards.length > limit);
+  }
+  function animateHeight(el, from, to, ms) {
+    if (reduce || Math.abs(from - to) < 2) return Promise.resolve();
+    el.style.overflow = 'hidden';
+    const a = el.animate([{ height: from + 'px' }, { height: to + 'px' }], { duration: ms, easing: 'cubic-bezier(.25,.8,.25,1)' });
+    return a.finished.catch(() => { }).then(() => { el.style.overflow = ''; });
+  }
+  function expand() {
+    const h0 = grid.offsetHeight; expanded = true; applyRows();
+    grid.querySelectorAll('.card').forEach((c, i) => { if (!c.classList.contains('in')) c.style.setProperty('--d', ((i % 8) * 0.05) + 's'); });
+    animateHeight(grid, h0, grid.offsetHeight, 650);
+  }
+  async function collapse() {
+    const h1 = grid.offsetHeight; expanded = false; applyRows(); const h0 = grid.offsetHeight; expanded = true; applyRows();
+    $('#gridMore').hidden = true;
+    const top = $('#gallery').getBoundingClientRect().top + scrollY - parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop || 0);
+    if (scrollY > top + h0 - innerHeight * 0.5) scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
+    await animateHeight(grid, h1, h0, 560); expanded = false; applyRows();
+    grid.querySelector('.tile.more')?.focus({ preventScroll: true });
+  }
+  $('#lessBtn').addEventListener('click', collapse);
+  let rowT = 0; addEventListener('resize', () => { clearTimeout(rowT); rowT = setTimeout(applyRows, 80); });
+  function renderGrid() {
+    renderCards(grid, art);
+    grid.querySelectorAll('.tile').forEach(t => t.dataset.label = t.getAttribute('aria-label'));
+    applyRows();
     $('#empty').hidden = art.length > 0;
   }
-  $('#grid').addEventListener('click', e => {
-    const t = e.target.closest('.tile'); if (t) return open(+t.dataset.i);
+  grid.addEventListener('click', e => {
+    const t = e.target.closest('.tile'); if (t) return t.classList.contains('more') ? expand() : open(+t.dataset.i, galleryCtx());
     const b = e.target.closest('.like'); if (b) like(b.dataset.art, b);
   });
+  const galleryCtx = () => ({ list: art, grid, tint: null });
+
+  // ---------- albums ----------
+  const albumGrid = $('#albumGrid'), av = $('#av'), avGrid = $('#avGrid'), avCover = $('#avCover');
+  let curAlbum = null, albumBusy = false;
+  function renderAlbums() {
+    albumGrid.innerHTML = albums.map((al, k) => `<div class="album-card fade" style="--d:${(k % 4) * 0.07}s">
+      <button class="album-tile" type="button" data-k="${k}" aria-label="Open album ${esc(al.name)}">
+        ${al.cover ? `<img src="${esc(thumb(al.cover))}" alt="" decoding="async" loading="lazy">` : '<span class="album-blank" aria-hidden="true"></span>'}
+        ${al.music ? '<span class="album-note" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></span>' : ''}
+      </button>
+      <div class="album-info"><strong>${esc(al.name)}</strong><small>${al.items.length} artwork${al.items.length === 1 ? '' : 's'}</small></div></div>`).join('');
+    albumGrid.querySelectorAll('.album-card').forEach(observe);
+    albumGrid.querySelectorAll('img').forEach(im => { const ok = () => im.classList.add('ok'); im.complete && im.naturalWidth ? ok() : im.addEventListener('load', ok, { once: true }); });
+    $('#albumsEmpty').hidden = albums.length > 0;
+  }
+  albumGrid.addEventListener('click', e => { const t = e.target.closest('.album-tile'); if (t) openAlbum(+t.dataset.k); });
+  const darkTint = (t) => t ? `hsl(${t.h} ${Math.round(t.s * 100)}% 13% / .86)` : 'rgba(12,20,32,.7)';
+  async function openAlbum(k) {
+    const al = albums[k]; if (!al || albumBusy || !av.hidden) return; albumBusy = true; curAlbum = al;
+    lastAlbumFocus = document.activeElement;
+    const tile = albumGrid.querySelector(`.album-tile[data-k="${k}"]`), timg = tile?.querySelector('img');
+    al.tint = al.tint || (al.cover && timg ? colourOf(thumb(al.cover), timg) : null);
+    $('#avName').textContent = al.name; $('#avCount').textContent = `${al.items.length} artwork${al.items.length === 1 ? '' : 's'}`;
+    $('#avDesc').textContent = al.description || ''; $('#avDesc').hidden = !al.description;
+    avCover.hidden = !al.cover; if (al.cover) avCover.src = thumb(al.cover);
+    $('#avTint').style.backgroundColor = darkTint(al.tint); av.dataset.tint = al.tint ? `${al.tint.h},${Math.round(al.tint.s * 100)}` : '';
+    renderCards(avGrid, al.items); $('#avEmpty').hidden = al.items.length > 0;
+    avGrid.querySelectorAll('.card').forEach((c, i) => c.style.setProperty('--d', (0.18 + Math.min(i, 11) * 0.045) + 's'));
+    av.hidden = false; lockScroll(1); $('#avScroll').scrollTop = 0;
+    sound.album(al);
+    $('#avClose').focus({ preventScroll: true });
+    const r0 = !reduce && timg && onScreen(timg);
+    requestAnimationFrame(() => av.classList.add('open'));
+    if (r0 && al.cover) {
+      avCover.style.opacity = '0'; timg.style.visibility = 'hidden';
+      await fly(r0, avCover.getBoundingClientRect(), timg.currentSrc || timg.src, 14, 10, 460, av);
+      avCover.style.opacity = ''; timg.style.visibility = ''; flyer?.remove(); flyer = null;
+    }
+    albumBusy = false;
+  }
+  let lastAlbumFocus = null;
+  async function closeAlbum() {
+    if (av.hidden || albumBusy || !lb.hidden) return; albumBusy = true;
+    const k = albums.indexOf(curAlbum), timg = albumGrid.querySelector(`.album-tile[data-k="${k}"] img`);
+    sound.album(null);
+    const r1 = !reduce && timg && onScreen(timg), r0 = !avCover.hidden && onScreen(avCover);
+    av.classList.remove('open');
+    if (r1 && r0) {
+      avCover.style.opacity = '0'; timg.style.visibility = 'hidden';
+      await fly(r0, r1, avCover.currentSrc || avCover.src, 10, 14, 400, av);
+      timg.style.visibility = '';
+    } else await new Promise(r => setTimeout(r, reduce ? 0 : 360));
+    av.hidden = true; avCover.style.opacity = ''; flyer?.remove(); flyer = null; avGrid.innerHTML = ''; lockScroll(-1); curAlbum = null; albumBusy = false;
+    lastAlbumFocus?.focus?.({ preventScroll: true });
+  }
+  $('#avClose').onclick = closeAlbum;
+  avGrid.addEventListener('click', e => {
+    const t = e.target.closest('.tile'); if (t && curAlbum) return open(+t.dataset.i, { list: curAlbum.items, grid: avGrid, tint: curAlbum.tint || null });
+    const b = e.target.closest('.like'); if (b) like(b.dataset.art, b);
+  });
+  // page scroll lock shared by the album view and the viewer
+  let locks = 0;
+  function lockScroll(d) {
+    const was = locks; locks = Math.max(0, locks + d);
+    if (!was && locks) { const sb = innerWidth - document.documentElement.clientWidth; document.body.style.overflow = 'hidden'; if (sb > 0) document.body.style.paddingRight = sb + 'px'; }
+    if (was && !locks) { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }
+  }
+
+  // ---------- music: site background track + per-album tracks ----------
+  const sound = (() => {
+    const bg = $('#bgAudio'), al = $('#albumAudio'), btn = $('#musicBtn'), abtn = $('#avSound');
+    const BG_VOL = 0.35, AL_VOL = 0.6;
+    let on = store.get('yaz.sound', true), album = null, waiting = false;
+    const fades = new WeakMap();
+    function fade(el, to, ms, then) {
+      cancelAnimationFrame(fades.get(el)); const from = el.volume, t0 = performance.now();
+      const step = (t) => { const k = Math.min(1, (t - t0) / ms); try { el.volume = from + (to - from) * k; } catch { } if (k < 1) fades.set(el, requestAnimationFrame(step)); else then?.(); };
+      fades.set(el, requestAnimationFrame(step));
+    }
+    const playing = () => (album && al.src && !al.paused) || (!album && bg.src && !bg.paused);
+    function ui() {
+      const p = playing();
+      [btn, abtn].forEach(b => { b.classList.toggle('playing', p); b.setAttribute('aria-pressed', p); });
+      btn.setAttribute('aria-label', p ? 'Mute background music' : 'Play background music');
+      abtn.setAttribute('aria-label', p ? 'Mute album music' : 'Play album music');
+    }
+    function start(el, vol) {
+      if (!el.getAttribute('src')) return Promise.reject(new Error('none'));
+      el.volume = 0; const pr = el.play(); return (pr || Promise.resolve()).then(() => { fade(el, vol, 900); ui(); });
+    }
+    function stop(el, keep) { if (el.paused) return; fade(el, 0, keep ? 450 : 350, () => { el.pause(); if (!keep) el.currentTime = 0; ui(); }); }
+    // browsers block autoplay with sound until the visitor interacts, so start on the first click / tap / key press anywhere
+    function waitForGesture() {
+      if (waiting) return; waiting = true;
+      const go = (e) => {
+        if (e.target?.closest?.('#musicBtn, #avSound')) return;      // the music button handles its own click
+        ['pointerdown', 'keydown', 'touchend'].forEach(t => removeEventListener(t, go, true)); waiting = false;
+        if (on && !album) start(bg, BG_VOL).catch(() => { });
+      };
+      ['pointerdown', 'keydown', 'touchend'].forEach(t => addEventListener(t, go, true));
+    }
+    function setBg(src) {
+      if (!src) { btn.hidden = true; return; }
+      bg.src = src; bg.loop = true; bg.preload = 'auto'; btn.hidden = false; ui();
+      if (on) start(bg, BG_VOL).catch(() => waitForGesture());
+    }
+    function toggle() {
+      if (playing()) { on = false; stop(album ? al : bg, true); }
+      else { on = true; (album ? start(al, AL_VOL) : start(bg, BG_VOL)).catch(() => { }); }
+      store.set('yaz.sound', on); ui();
+    }
+    btn.addEventListener('click', toggle); abtn.addEventListener('click', toggle);
+    [bg, al].forEach(el => ['play', 'pause', 'ended'].forEach(t => el.addEventListener(t, ui)));
+    return {
+      setBg, toggle,
+      album(a) {     // open (a = album) or close (a = null) an album
+        if (a) {
+          album = a; stop(bg, true);
+          abtn.hidden = !a.music;
+          if (a.music) { al.src = asset(a.music); al.loop = true; al.currentTime = 0; if (on) start(al, AL_VOL).catch(() => ui()); }
+        } else {
+          album = null; stop(al, false); setTimeout(() => { if (!album) al.removeAttribute('src'); }, 400);
+          if (on && bg.getAttribute('src')) start(bg, BG_VOL).catch(() => waitForGesture());
+        }
+        ui();
+      },
+    };
+  })();
 
   // ---------- viewer: shared-element open/close, tinted backdrop, swipe carousel, pinch/double-tap zoom ----------
   const lb = $('#lb'), stage = $('#lbStage'), track = $('#lbTrack'), textEl = $('#lbText'), tintEl = $('#lbTint'), glowEl = $('#lbGlow');
   const EASE = 'cubic-bezier(.22,.8,.24,1)', GAP = 28;
   let idx = 0, panelI = -1, lastFocus = null, W = 0, offset = 0, pendingK = 0, animTimer = 0, closing = false, flyer = null;
-  const N = () => art.length, wrap = (i) => ((i % N()) + N()) % N();
-  const tileImg = (i) => document.querySelector(`#grid .tile[data-i="${i}"] img`);
+  let ctx = { list: [], grid: null, tint: null };      // what the viewer is showing: the gallery, or one album (tint = album cover colour)
+  const L = () => ctx.list;
+  const N = () => L().length, wrap = (i) => ((i % N()) + N()) % N();
+  const tileImg = (i) => ctx.grid?.querySelector(`.tile[data-i="${i}"] img`);
   const slides = [0, 1, 2].map(() => { const s = document.createElement('div'); s.className = 'lb-slide'; s.innerHTML = '<img alt="" draggable="false">'; track.appendChild(s); return s; });
   const curImg = () => slides[1].firstElementChild;   // slides = [previous, current, next]
 
@@ -162,14 +362,18 @@
   function fit(im) {
     const s = im.parentElement, cs = getComputedStyle(s);
     const bw = s.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), bh = s.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-    const a = im.naturalWidth ? im.naturalWidth / im.naturalHeight : (art[+s.dataset.i]?.aspect || 0.75);
+    const a = im.naturalWidth ? im.naturalWidth / im.naturalHeight : (L()[+s.dataset.i]?.aspect || 0.75);
     let w = bw, h = w / a; if (h > bh) { h = bh; w = h * a; }
-    im.style.width = Math.max(0, w) + 'px'; im.style.height = Math.max(0, h) + 'px';
+    im._b = { w: Math.max(0, w), h: Math.max(0, h) }; applyZ(im, zs(im));
   }
   function fill(slot, i) {
-    const s = slides[slot], im = s.firstElementChild, j = wrap(i), a = art[j], src = asset(a.image);
+    const s = slides[slot], im = s.firstElementChild, j = wrap(i), a = L()[j], src = asset(a.image);   // always the untouched original file
     s.dataset.i = j; s.setAttribute('aria-hidden', slot !== 1); im.alt = slot === 1 ? (a.title || a.caption || 'Artwork') : '';
-    if (im.getAttribute('src') !== src) { im.style.opacity = ''; im.onload = () => { fit(im); if (j === panelI) setTint(j); }; im.src = src; }
+    if (im.getAttribute('src') !== src) {
+      im.style.opacity = ''; const t = thumb(a.image);
+      im.style.backgroundImage = t !== src ? `url("${t.replace(/"/g, '%22')}")` : '';      // fast preview while the full-resolution file loads
+      im.onload = () => { fit(im); im.style.backgroundImage = ''; if (j === panelI) setTint(j); }; im.src = src;
+    }
     fit(im);
   }
   function place() { slides.forEach((s, k) => { s.style.transform = `translate3d(${(k - 1) * (W + GAP)}px,0,0)`; }); slides[0].hidden = slides[2].hidden = N() < 2; }
@@ -196,8 +400,8 @@
     } catch { return null; }
   }
   function setTint(i) {
-    const a = art[i]; if (!a) return; const src = asset(a.image);
-    const t = colourOf(src, tileImg(i)) || colourOf(src, slides.find(s => +s.dataset.i === i)?.firstElementChild);
+    const a = L()[i]; if (!a) return; const src = asset(a.image);
+    const t = ctx.tint || colourOf(src, tileImg(i)) || colourOf(src, slides.find(s => +s.dataset.i === i)?.firstElementChild);
     const s = t ? Math.round(t.s * 100) : 0;
     tintEl.style.backgroundColor = t ? `hsl(${t.h} ${s}% 13% / .86)` : 'rgba(12,20,32,.7)';    // lightness clamped to 13%: dark, art stays the focus
     glowEl.style.backgroundColor = t ? `hsl(${t.h} ${Math.min(80, s + 15)}% 34%)` : 'transparent';
@@ -207,7 +411,8 @@
   // ----- right-hand (desktop) / below-image (mobile) text panel -----
   let panelTimer = 0;
   function setPanel(i, animate) {
-    if (i === panelI) return; panelI = i; const a = art[i];
+    if (i === panelI) return; panelI = i; const a = L()[i];
+    $('#lbLike').dataset.art = a.id; $('#lbViews').dataset.art = a.id; countView(a.id);
     const apply = () => {
       $('#lbTitle').textContent = a.title || ''; $('#lbTitle').hidden = !a.title;
       $('#lbCap').textContent = a.caption || ''; $('#lbCap').hidden = !a.caption;
@@ -245,9 +450,27 @@
 
   // ----- zoom (per image: translate + scale, origin top-left) -----
   const Z = new WeakMap(), zs = (im) => Z.get(im) || { s: 1, tx: 0, ty: 0 };
-  function applyZ(im, z, ms = 0) {
-    Z.set(im, z); im.style.transition = ms && !reduce ? `transform ${ms}ms ${EASE}` : 'none';
+  // While a zoom is moving, the image is scaled with a CSS transform (smooth). Once it settles, the image is laid out at
+  // its real zoomed size instead, so the browser re-draws it from the full-resolution file (a scaled-up transform only
+  // magnifies the small screen-sized bitmap, which looked blurry when zooming in).
+  function lowForm(im, z) {
+    const b = im._b || { w: im.clientWidth, h: im.clientHeight };
+    im.style.width = b.w + 'px'; im.style.height = b.h + 'px';
     im.style.transform = z.s === 1 && !z.tx && !z.ty ? '' : `translate3d(${z.tx}px,${z.ty}px,0) scale(${z.s})`;
+  }
+  function applyZ(im, z, ms = 0, live = false) {
+    const prev = Z.get(im); Z.set(im, z); clearTimeout(im._hiT);
+    const b = im._b || { w: im.clientWidth, h: im.clientHeight };
+    if (z.s > 1.01 && !ms && !live) {
+      im.style.transition = 'none'; im.classList.add('hi');
+      im.style.width = b.w * z.s + 'px'; im.style.height = b.h * z.s + 'px';
+      im.style.transform = `translate3d(${z.tx + (z.s - 1) * b.w / 2}px,${z.ty + (z.s - 1) * b.h / 2}px,0)`;   // flex-centred box grows both ways
+    } else {
+      if (im.classList.contains('hi')) { im.style.transition = 'none'; lowForm(im, prev || z); void im.offsetWidth; im.classList.remove('hi'); }
+      im.style.transition = ms && !reduce ? `transform ${ms}ms ${EASE}` : 'none';
+      lowForm(im, z);
+      if (z.s > 1.01) im._hiT = setTimeout(() => { if (Z.get(im) === z && gest !== 'pinch') applyZ(im, z); }, (ms && !reduce ? ms : 0) + 140);
+    }
     if (im === curImg()) lb.classList.toggle('zoomed', z.s > 1.01);
   }
   const resetZoom = (im, ms = 0) => applyZ(im, { s: 1, tx: 0, ty: 0 }, ms);
@@ -257,10 +480,10 @@
     const lim = (o, len, t, s0, sl) => { const L = len * s; return L <= sl ? len * (1 - s) / 2 : Math.min(s0 - o, Math.max(s0 + sl - L - o, t)); };
     return { s, tx: lim(g.ox, g.w, z.tx, S.left, S.width), ty: lim(g.oy, g.h, z.ty, S.top, S.height) };
   }
-  function zoomAt(im, s, cx, cy, ms = 0) {
+  function zoomAt(im, s, cx, cy, ms = 0, live = false) {
     const z = zs(im), g = geom(im); s = Math.max(1, Math.min(6, s));
     const tx = (cx - g.ox) - (s / z.s) * (cx - g.ox - z.tx), ty = (cy - g.oy) - (s / z.s) * (cy - g.oy - z.ty);
-    applyZ(im, clampZ(im, { s, tx, ty }, g), ms);
+    applyZ(im, clampZ(im, { s, tx, ty }, g), ms, live);
   }
   const toggleZoom = (x, y) => { const im = curImg(); zs(im).s > 1.01 ? resetZoom(im, 280) : zoomAt(im, 2.5, x, y, 300); };
 
@@ -282,7 +505,7 @@
       multi = true;
       if (gest === 'drag' || offset) go(0);                 // a second finger cancels any slide in progress
       gest = 'pinch'; const m = dist2(), z = zs(im), g = geom(im); pinch = { d: m.d, x: m.x, y: m.y, ...z, g };
-      im.style.transition = 'none';
+      applyZ(im, z, 0, true);
     }
   });
   stage.addEventListener('pointermove', e => {
@@ -290,7 +513,7 @@
     const im = curImg(), dx = e.clientX - st.x, dy = e.clientY - st.y;
     if (gest === 'pinch' && pts.size >= 2) {
       const m = dist2(), s = Math.max(0.85, Math.min(7, pinch.s * m.d / pinch.d)), g = pinch.g;
-      applyZ(im, { s, tx: (m.x - g.ox) - (s / pinch.s) * (pinch.x - g.ox - pinch.tx), ty: (m.y - g.oy) - (s / pinch.s) * (pinch.y - g.oy - pinch.ty) });
+      applyZ(im, { s, tx: (m.x - g.ox) - (s / pinch.s) * (pinch.x - g.ox - pinch.tx), ty: (m.y - g.oy) - (s / pinch.s) * (pinch.y - g.oy - pinch.ty) }, 0, true);
     } else if (gest === 'pending' && !multi) {
       if (Math.abs(dx) > 7 && Math.abs(dx) > Math.abs(dy) * 1.1) { gest = 'drag'; stage.classList.add('dragging'); st.off = offset; }
       else if (Math.abs(dy) > 12) gest = 'none';
@@ -331,7 +554,7 @@
   // trackpad pinch / ctrl+wheel zooms the artwork (not the page); plain wheel pans while zoomed
   lb.addEventListener('wheel', e => {
     e.preventDefault(); const im = curImg(), z = zs(im);
-    if (e.ctrlKey) zoomAt(im, z.s * Math.exp(-e.deltaY * 0.012), e.clientX, e.clientY);
+    if (e.ctrlKey) zoomAt(im, z.s * Math.exp(-e.deltaY * 0.012), e.clientX, e.clientY, 0, true);
     else if (z.s > 1.01) applyZ(im, clampZ(im, { s: z.s, tx: z.tx - e.deltaX, ty: z.ty - e.deltaY }));
   }, { passive: false });
   ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => lb.addEventListener(t, e => e.preventDefault()));   // Safari: no page pinch-zoom inside the viewer
@@ -340,15 +563,16 @@
 
   // ----- open / close with a shared-element "flight" between the thumbnail and the viewer -----
   function onScreen(el) { if (!el) return null; const r = el.getBoundingClientRect(); return r.width && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth ? r : null; }
-  function fly(from, to, src, r0, r1, ms) {
-    flyer?.remove(); const g = flyer = document.createElement('div'); g.className = 'lb-flyer'; g.innerHTML = `<img alt="" src="${esc(src)}">`; lb.appendChild(g);
+  function fly(from, to, src, r0, r1, ms, host = lb) {
+    flyer?.remove(); const g = flyer = document.createElement('div'); g.className = 'lb-flyer'; g.innerHTML = `<img alt="" src="${esc(src)}">`; host.appendChild(g);
     const k = (r, rad) => ({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: rad + 'px' });
     return g.animate([k(from, r0), k(to, r1)], { duration: ms, easing: 'cubic-bezier(.2,.75,.2,1)', fill: 'forwards' }).finished.catch(() => { });
   }
-  async function open(i) {
-    if (!lb.hidden || !art.length) return;
+  async function open(i, c) {
+    if (!lb.hidden || !c?.list.length) return;
+    ctx = c; slides.forEach(s => { const im = s.firstElementChild; im.removeAttribute('src'); im.style.backgroundImage = ''; });
     lastFocus = document.activeElement; idx = i; panelI = -1; closing = false;
-    const sb = innerWidth - document.documentElement.clientWidth; lb.hidden = false; document.body.style.overflow = 'hidden'; if (sb > 0) document.body.style.paddingRight = sb + 'px';
+    lb.hidden = false; lockScroll(1);
     layout(); fill(0, i - 1); fill(1, i); fill(2, i + 1); setOffset(0); setPanel(i, false);
     $('#lbClose').focus({ preventScroll: true });
     const thumb = tileImg(i), r0 = !reduce && onScreen(thumb), im = curImg();
@@ -363,8 +587,8 @@
     if (lb.hidden || closing) return; closing = true;
     if (animTimer) commit(); if (offset) setOffset(0);
     const im = curImg(); resetZoom(im);
-    const card = document.querySelector(`#grid .tile[data-i="${idx}"]`)?.closest('.card');
-    if (card) { card.classList.add('in', 'done'); if (!onScreen(card.querySelector('img'))) card.scrollIntoView({ block: 'center', behavior: 'instant' }); }
+    const card = ctx.grid?.querySelector(`.tile[data-i="${idx}"]`)?.closest('.card');
+    if (card && card.offsetParent) { card.classList.add('in', 'done'); if (!onScreen(card.querySelector('img'))) card.scrollIntoView({ block: 'center', behavior: 'instant' }); }
     const thumb = tileImg(idx), r1 = !reduce && onScreen(thumb), r0 = im.getBoundingClientRect();
     lb.classList.remove('open');
     if (r1 && r0.width) {
@@ -372,14 +596,19 @@
       await fly(r0, r1, im.currentSrc || im.src, 10, 14, 380);
       thumb.style.visibility = '';
     } else await new Promise(r => setTimeout(r, reduce ? 0 : 320));
-    lb.hidden = true; im.style.opacity = ''; flyer?.remove(); flyer = null; document.body.style.overflow = ''; document.body.style.paddingRight = ''; closing = false;
+    lb.hidden = true; im.style.opacity = ''; flyer?.remove(); flyer = null; lockScroll(-1); closing = false;
     lastFocus?.focus?.({ preventScroll: true });
   }
   $('#lbClose').onclick = close; $('#lbPrev').onclick = () => go(-1); $('#lbNext').onclick = () => go(1);
-  $('#lbLike').onclick = () => art[panelI] && like(art[panelI].id, $('#lbLike'));
+  $('#lbLike').onclick = () => L()[panelI] && like(L()[panelI].id, $('#lbLike'));
   addEventListener('resize', () => { if (!lb.hidden) { if (animTimer) commit(); layout(); setOffset(0); resetZoom(curImg()); } });
   addEventListener('keydown', e => {
-    if (lb.hidden) return;
+    if (lb.hidden) {                       // album view open (no artwork viewer on top)
+      if (av.hidden) return;
+      if (e.key === 'Escape') { e.preventDefault(); closeAlbum(); }
+      else if (e.key === 'Tab') { const f = [...av.querySelectorAll('button')].filter(x => x.offsetParent); const k = f.indexOf(document.activeElement); if (k === -1 || (e.shiftKey ? k === 0 : k === f.length - 1)) { e.preventDefault(); f[e.shiftKey ? f.length - 1 : 0]?.focus(); } }
+      return;
+    }
     if (e.key === 'Escape') { e.preventDefault(); return zs(curImg()).s > 1.01 ? resetZoom(curImg(), 240) : close(); }
     if (e.key === 'Tab') { const f = [...lb.querySelectorAll('button')].filter(x => x.offsetParent && getComputedStyle(x).visibility !== 'hidden'); const k = f.indexOf(document.activeElement); e.preventDefault(); f[(k + (e.shiftKey ? -1 : 1) + f.length) % f.length]?.focus(); return; }
     if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); } else if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
@@ -387,9 +616,14 @@
     else if (e.key === '-' || e.key === '0') resetZoom(curImg(), 200);
   });
 
-  Promise.all([json('content/site.json').catch(() => ({})), json('content/gallery.json').catch(() => ({ artworks: [] }))]).then(([s, g]) => {
-    art = (g.artworks || []).filter(a => a && a.image).map(a => ({ ...a, id: artId(a.image) }));
-    renderSite(s); renderGrid();
-    const ids = new Set(art.map(a => a.id)); pending().filter(id => ids.has(id)).forEach(send);   // likes that couldn't be sent last time
+  Promise.all([json('content/site.json').catch(() => ({})), json('content/gallery.json').catch(() => ({ artworks: [] })),
+    json('content/albums.json').catch(() => ({ albums: [] })), json('content/thumbs.json').catch(() => ({}))]).then(([s, g, A, T]) => {
+    thumbs = T && typeof T === 'object' ? T : {};
+    const pieces = (list) => (list || []).filter(a => a && a.image).map(a => ({ ...a, id: artId(a.image) }));
+    art = pieces(g.artworks);
+    albums = (A.albums || []).filter(a => a && (a.name || a.cover)).map(a => ({ ...a, name: a.name || 'Untitled album', items: pieces(a.artworks) }));
+    renderSite(s); renderGrid(); renderAlbums();
+    sound.setBg(s.music ? asset(s.music) : '');
+    const ids = new Set([...art, ...albums.flatMap(a => a.items)].map(a => a.id)); pending().filter(id => ids.has(id)).forEach(send);   // likes that couldn't be sent last time
   });
 })();

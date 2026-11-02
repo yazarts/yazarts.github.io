@@ -1,10 +1,19 @@
 # Pages CMS configuration — https://pagescms.org/docs/configuration/
 # Log in at https://app.pagescms.org with GitHub, open the "yazartsgallery" repo.
+# Uploads are stored exactly as uploaded (Pages CMS never resizes or recompresses them).
 media:
-  input: images
-  output: /images
-  categories: [image]
-  rename: safe
+  - name: images
+    label: Images
+    input: images
+    output: /images
+    categories: [image]
+    rename: safe
+  - name: music
+    label: Music
+    input: audio
+    output: /audio
+    extensions: [mp3, m4a, ogg, wav]
+    rename: safe
 
 content:
   - name: gallery
@@ -26,6 +35,7 @@ content:
             type: image
             required: true
             options:
+              media: images
               path: images/artworks
           - name: title
             label: Title (optional)
@@ -33,6 +43,63 @@ content:
           - name: caption
             label: Caption
             type: text
+
+  - name: albums
+    label: Albums
+    type: file
+    path: content/albums.json
+    format: json
+    fields:
+      - name: albums
+        label: Albums (drag the handle to reorder; the first one shows first on the site)
+        type: object
+        list:
+          collapsible:
+            collapsed: true
+            summary: "{name}"
+        fields:
+          - name: name
+            label: Album name
+            type: string
+            required: true
+          - name: cover
+            label: Album cover (square image works best)
+            type: image
+            required: true
+            options:
+              media: images
+              path: images/albums
+          - name: description
+            label: Description (optional)
+            type: text
+          - name: music
+            label: Album music (optional, plays when a visitor opens the album; mp3, m4a, ogg or wav)
+            type: file
+            options:
+              media: music
+              path: audio/albums
+              extensions: [mp3, m4a, ogg, wav]
+          - name: artworks
+            label: Artworks in this album (drag the handle to reorder)
+            type: object
+            list:
+              collapsible:
+                collapsed: true
+                summary: "{index}. {title}"
+            fields:
+              - name: image
+                label: Image
+                type: image
+                required: true
+                options:
+                  media: images
+                  path: images/albums
+              - name: title
+                label: Title (optional)
+                type: string
+              - name: caption
+                label: Caption
+                type: text
 
   - name: site
     label: Site settings
@@ -77,6 +144,7 @@ content:
         label: Banner image (wide image, e.g. 2400 × 900)
         type: image
         options:
+          media: images
           path: images/site
       - name: heroTitle
         label: Banner title, line 1
@@ -87,4 +155,11 @@ content:
       - name: siteName
         label: Site name (top-left logo and browser tab)
         type: string
+      - name: music
+        label: Background music (optional, plays softly on a loop; mp3, m4a, ogg or wav). Remove it to turn the music off.
+        type: file
+        options:
+          media: music
+          path: audio/site
+          extensions: [mp3, m4a, ogg, wav]
 

@@ -4,6 +4,7 @@
   "description": "Static art portfolio for @yazarts (GitHub Pages + Pages CMS). No build step; this file is only for local dev tools.",
   "scripts": {
     "serve": "python3 -m http.server 8090",
+    "test-site": "bash scripts/make_test_site.sh",
     "check": "node scripts/check.js"
   },
   "devDependencies": {
