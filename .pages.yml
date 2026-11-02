@@ -77,7 +77,6 @@ content:
             type: file
             options:
               media: music
-              path: audio/albums
               extensions: [mp3, m4a, ogg, wav]
           - name: artworks
             label: Artworks in this album (drag the handle to reorder)
@@ -160,6 +159,5 @@ content:
         type: file
         options:
           media: music
-          path: audio/site
           extensions: [mp3, m4a, ogg, wav]
 
