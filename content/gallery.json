@@ -1,7 +1,8 @@
 {
   "artworks": [
     {
-      "image": "/images/artworks/giant-girl-lake.jpg"
+      "image": "/images/artworks/giant-girl-lake.jpg",
+      "title": "Giant stone lady"
     },
     {
       "image": "/images/artworks/yaz-artwork-2026-11-02.png"
