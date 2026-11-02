@@ -14,9 +14,9 @@ T = sys.argv[1]
 im = Image.new('RGB', (1600, 1600), (20, 120, 110)); d = ImageDraw.Draw(im)
 for i in range(0, 1600, 80): d.ellipse([i-200, i-300, i+300, i+200], outline=(60, 200, 170), width=14)
 im.save(f'{T}/images/albums/test-cover.jpg', quality=92)
-g = json.load(open(f'{T}/content/gallery.json'))
+g = json.load(open(f'{T}/content/portfolio.json'))
 for k in range(1, 6): g['artworks'].append({'image': f'/images/artworks/placeholder-{k}.svg?extra={k}', 'title': f'TEST extra {k}', 'caption': 'Temporary local test piece'})
-json.dump(g, open(f'{T}/content/gallery.json', 'w'), indent=1)
+json.dump(g, open(f'{T}/content/portfolio.json', 'w'), indent=1)
 arts = [a['image'] for a in g['artworks'] if a['image'].endswith(('.jpeg', '.jpg', '.png'))][:2] + ['/images/artworks/placeholder-2.svg', '/images/artworks/placeholder-6.svg', '/images/artworks/placeholder-7.svg']
 json.dump({'albums': [{'name': 'TEST album (local only)', 'cover': '/images/albums/test-cover.jpg', 'description': 'Temporary local test album used for screenshots. Not published.', 'music': '/audio/albums/test-album.mp3',
   'artworks': [{'image': a, 'title': f'Test piece {i+1}', 'caption': 'Inside a test album'} for i, a in enumerate(arts)]},

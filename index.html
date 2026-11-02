@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>yazartsgallery · digital art by @yazarts</title>
-<meta name="description" content="yazartsgallery: the digital art portfolio of @yazarts.">
-<meta property="og:title" content="yazartsgallery">
-<meta property="og:description" content="Digital art by @yazarts.">
-<meta property="og:url" content="https://yazarts.github.io/yazartsgallery/">
-<link rel="canonical" href="https://yazarts.github.io/yazartsgallery/">
+<title>yazarts · digital art portfolio by @yazarts</title>
+<meta name="description" content="yazarts: the digital art portfolio of @yazarts. Illustrations, characters and commissions.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="yazarts · portfolio">
+<meta property="og:description" content="Digital art and illustrations by @yazarts. Open for commissions.">
+<meta property="og:url" content="https://yazarts.github.io/">
+<meta property="og:image" content="https://yazarts.github.io/images/site/hero-cutout.png">
+<link rel="canonical" href="https://yazarts.github.io/">
 <meta name="theme-color" content="#0c1420">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,18 +18,19 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<a class="skip" href="#gallery">Skip to gallery</a>
+<a class="skip" href="#portfolio">Skip to portfolio</a>
 <header class="nav" id="nav">
   <div class="nav-inner">
     <div class="brand-wrap">
-      <a class="brand" href="#home"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="#palette"/></svg><span id="brandName">yazartsgallery</span></a>
+      <a class="brand" href="#home"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="#palette"/></svg><span id="brandName">yazarts</span></a>
       <button class="music-btn" type="button" id="musicBtn" aria-pressed="false" aria-label="Play background music" title="Background music" hidden><span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="mute-line" aria-hidden="true"></span></button>
     </div>
     <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
     <nav id="menu" aria-label="Main">
       <a href="#home" data-nav="home">Home</a>
-      <a href="#gallery" data-nav="gallery">Gallery</a>
+      <a href="#portfolio" data-nav="portfolio">Portfolio</a>
       <a href="#albums" data-nav="albums">Albums</a>
+      <a href="#commissions" data-nav="commissions">Commissions</a>
       <a href="#about" data-nav="about">About</a>
       <a href="#connect" data-nav="connect">Connect</a>
     </nav>
@@ -35,20 +38,29 @@
 </header>
 
 <main>
-  <section class="hero" id="home">
-    <div class="hero-bg"><img id="heroImg" src="images/site/banner-placeholder.svg" alt="" fetchpriority="high"></div>
-    <div class="hero-shade" aria-hidden="true"></div>
-    <div class="hero-content">
-      <svg class="hero-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="#palette"/></svg>
-      <h1><span id="heroTitle">yazarts</span><small id="heroSubtitle">gallery</small></h1>
-      <p id="tagline">Digital art by @yazarts</p>
+  <section class="hero" id="home" aria-labelledby="heroTitle">
+    <div class="hero-inner">
+      <figure class="hero-figure"><img id="heroImg" src="images/site/hero-cutout.png" alt="" fetchpriority="high" decoding="async"></figure>
+      <div class="hero-text">
+        <h1 id="heroTitle">Welcome!</h1>
+        <p class="hero-sub" id="heroSubtitle">To my portfolio</p>
+        <span class="hero-lines" aria-hidden="true"><i></i><i></i><i></i></span>
+        <p class="hero-intro" id="heroIntro">Digital art and illustrations by @yazarts</p>
+        <a class="hero-cta" href="#portfolio">See my work<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
+      </div>
     </div>
   </section>
 
-  <section class="section" id="gallery" aria-labelledby="gallery-h">
-    <div class="section-head fade"><h2 id="gallery-h">Gallery</h2><span class="rule"></span></div>
-    <div class="grid" id="grid"></div>
-    <div class="grid-more" id="gridMore" hidden><button class="less-btn" type="button" id="lessBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>Show less</button></div>
+  <section class="section" id="portfolio" aria-labelledby="portfolio-h">
+    <div class="section-head fade"><h2 id="portfolio-h">Portfolio</h2><span class="rule"></span>
+      <span class="pf-nav"><button class="pf-arrow" type="button" id="pfPrev" aria-label="Scroll the portfolio left"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><button class="pf-arrow" type="button" id="pfNext" aria-label="Scroll the portfolio right"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></span>
+    </div>
+    <div class="pf-wrap fade" id="pfWrap">
+      <div class="pf-scroll at-start" id="pfScroll" tabindex="0" role="region" aria-label="Portfolio artworks, scroll sideways to see more">
+        <div class="pf-track" id="pfTrack"></div>
+      </div>
+      <span class="pf-hint" id="pfHint" aria-hidden="true"><span class="t-touch">Swipe</span><span class="t-mouse">Scroll</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+    </div>
     <p class="empty" id="empty" hidden>New artworks are coming soon.</p>
   </section>
 
@@ -61,6 +73,23 @@
     </div>
   </section>
 
+  <section class="section comm" id="commissions" aria-labelledby="comm-h">
+    <div class="section-head fade"><h2 id="comm-h">Commissions</h2><span class="rule"></span></div>
+    <div class="comm-top fade">
+      <p class="comm-kicker" id="commKicker">Open for commissions!</p>
+      <p class="comm-text" id="commText"></p>
+      <p class="comm-what" id="commWhat">What I do:</p>
+    </div>
+    <div class="tiers fade" id="tiers" role="region" aria-roledescription="carousel" aria-label="Commission types">
+      <div class="tiers-stage" id="tiersStage" aria-live="off"></div>
+      <div class="tiers-ctrl" id="tiersCtrl">
+        <button class="t-arrow" type="button" id="tPrev" aria-label="Previous commission type"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="t-dots" id="tDots" role="group" aria-label="Choose a commission type"></div>
+        <button class="t-arrow" type="button" id="tNext" aria-label="Next commission type"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+      </div>
+    </div>
+  </section>
+
   <section class="section about" id="about" aria-labelledby="about-h">
     <div class="section-head fade"><h2 id="about-h">About</h2><span class="rule"></span></div>
     <p class="about-text fade" id="aboutText"></p>
@@ -68,15 +97,11 @@
 
   <section class="section connect" id="connect" aria-labelledby="connect-h">
     <div class="section-head fade"><h2 id="connect-h">Connect</h2><span class="rule"></span></div>
-    <div class="commission fade" id="commission">
-      <span class="status" id="commStatus"><i></i><b>Commissions open</b></span>
-      <p id="commText"></p>
-    </div>
     <ul class="links fade" id="links"></ul>
   </section>
 </main>
 
-<footer class="foot"><span>© <span id="yr"></span> <span id="footName">yazartsgallery</span></span><span>All artwork © @yazarts</span></footer>
+<footer class="foot"><span>© <span id="yr"></span> <span id="footName">yazarts</span></span><span>All artwork © @yazarts</span></footer>
 
 <div class="lightbox" id="lb" role="dialog" aria-modal="true" aria-label="Artwork viewer" hidden>
   <div class="lb-bg" aria-hidden="true"></div>
@@ -128,7 +153,7 @@
   <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.3s-7.5-4.4-7.5-10.1A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.7-7.5 10.1-7.5 10.1Z"/></symbol>
   <symbol id="palette" viewBox="0 0 32 32"><path fill="currentColor" d="M16 3C8.8 3 3 8.4 3 15.1 3 21.7 8.6 27 15.4 27c1.6 0 2.6-1 2.6-2.3 0-.6-.2-1.1-.6-1.6-.4-.5-.6-1-.6-1.6 0-1.3 1-2.3 2.3-2.3h2.8c4.1 0 7.1-3.1 7.1-6.9C29 7.8 23.2 3 16 3Zm-7.5 13a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm4-5.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm7 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm4.5 5.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/></symbol>
 </svg>
-<noscript><p style="text-align:center;padding:2rem">Please enable JavaScript to view the gallery.</p></noscript>
+<noscript><p style="text-align:center;padding:2rem">Please enable JavaScript to view the portfolio.</p></noscript>
 <script src="assets/site.js" defer></script>
 </body>
 </html>

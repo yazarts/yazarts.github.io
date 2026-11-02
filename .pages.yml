@@ -1,5 +1,5 @@
 # Pages CMS configuration — https://pagescms.org/docs/configuration/
-# Log in at https://app.pagescms.org with GitHub, open the "yazartsgallery" repo.
+# Log in at https://app.pagescms.org with GitHub, open the "yazarts.github.io" repo.
 # Uploads are stored exactly as uploaded (Pages CMS never resizes or recompresses them).
 media:
   - name: images
@@ -16,14 +16,14 @@ media:
     rename: safe
 
 content:
-  - name: gallery
-    label: Gallery
+  - name: portfolio
+    label: Portfolio
     type: file
-    path: content/gallery.json
+    path: content/portfolio.json
     format: json
     fields:
       - name: artworks
-        label: Artworks (drag the handle to reorder; the first one shows first on the site)
+        label: Artworks (drag the handle to reorder; the first one is shown big at the start of the portfolio)
         type: object
         list:
           collapsible:
@@ -31,7 +31,7 @@ content:
             summary: "{index}. {title}"
         fields:
           - name: image
-            label: Image
+            label: Image (any shape works; the portfolio keeps its natural proportions)
             type: image
             required: true
             options:
@@ -43,6 +43,10 @@ content:
           - name: caption
             label: Caption
             type: text
+          - name: featured
+            label: Show bigger (a big tile in the portfolio)
+            type: boolean
+            description: The first artwork is always big. Switch this on to make other pieces big too.
 
   - name: albums
     label: Albums
@@ -100,6 +104,40 @@ content:
                 label: Caption
                 type: text
 
+  - name: commissions
+    label: Commissions
+    type: file
+    path: content/commissions.json
+    format: json
+    fields:
+      - name: tiers
+        label: Commission types (slides; drag the handle to reorder, they switch every 5 seconds). Open/closed is in Site settings.
+        type: object
+        list:
+          collapsible:
+            collapsed: true
+            summary: "{index}. {name} ({price})"
+        fields:
+          - name: name
+            label: Tier name (e.g. Portraits, Full Body Character)
+            type: string
+            required: true
+          - name: image
+            label: Example image (any shape; your own art works best)
+            type: image
+            options:
+              media: images
+              path: images/commissions
+          - name: description
+            label: Description
+            type: text
+          - name: price
+            label: Price (shown in the outlined box, e.g. $25)
+            type: string
+          - name: notes
+            label: Extra notes (optional, small text under the price)
+            type: text
+
   - name: site
     label: Site settings
     type: file
@@ -109,7 +147,7 @@ content:
       - name: commissionsOpen
         label: Commissions open?
         type: boolean
-        description: Switch off to show the "closed" message instead.
+        description: Switch off to show the "closed" message instead. The commission types themselves are edited under Commissions.
       - name: commissionText
         label: Message when commissions are OPEN
         type: text
@@ -136,23 +174,26 @@ content:
       - name: about
         label: About text
         type: text
-      - name: tagline
-        label: Tagline under the title
-        type: string
       - name: heroImage
-        label: Banner image (wide image, e.g. 2400 × 900)
+        label: Welcome image (use a PNG with a TRANSPARENT background, e.g. a character cut-out; it floats on the page with no box)
         type: image
         options:
           media: images
           path: images/site
+      - name: heroImageAlt
+        label: Welcome image description (for screen readers)
+        type: string
       - name: heroTitle
-        label: Banner title, line 1
+        label: Welcome title (big text, e.g. Welcome!)
         type: string
       - name: heroSubtitle
-        label: Banner title, line 2
+        label: Welcome subtitle (e.g. To my portfolio)
         type: string
+      - name: heroIntro
+        label: Welcome intro (short line under the subtitle)
+        type: text
       - name: siteName
-        label: Site name (top-left logo and browser tab)
+        label: Site name (top-left logo and footer)
         type: string
       - name: music
         label: Background music (optional, plays softly on a loop; mp3, m4a, ogg or wav). Remove it to turn the music off.

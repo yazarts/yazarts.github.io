@@ -1,140 +1,136 @@
-# yazartsgallery
+# yazarts
 
-The art portfolio of **@yazarts**. It's a calm, dark blue-and-brown gallery site that is **free to host** on GitHub Pages and **edited without code** through [Pages CMS](https://pagescms.org), a free editor that logs in with GitHub.
+The art portfolio of **@yazarts**: a calm, dark navy-and-brown site that is **free to host** on GitHub Pages and **edited without code** through [Pages CMS](https://pagescms.org), a free editor that logs in with GitHub.
 
-* No server of your own and no build step. It is plain HTML, CSS and JS.
-* All content lives in `content/gallery.json` (artworks, in display order) and `content/site.json` (links, commissions, about text, banner).
-* **Likes** use [Abacus](https://abacus.jasoncameron.dev), a free counter service that needs **no account, no key and no setup**. They work as soon as the site is online.
-* Live site: **https://yazarts.github.io/yazartsgallery/** · Repository: **https://github.com/yazarts/yazartsgallery**
-* Images live in `images/artworks/` and `images/site/`.
+* Live site: **https://yazarts.github.io/** · Repository: **https://github.com/yazarts/yazarts.github.io**
+* Plain HTML, CSS and JS. No server of your own and no build step.
+* Content lives in `content/portfolio.json` (artworks, in display order), `content/albums.json`, `content/commissions.json` (commission types) and `content/site.json` (welcome section, links, commissions open/closed, about text, music).
+* **Likes and views** use [Abacus](https://abacus.jasoncameron.dev), a free counter service that needs **no account, no key and no setup**.
 * Every save in the CMS creates a commit on `main`. A free GitHub Actions workflow then republishes the site, usually within 1 to 2 minutes.
+
+The page, top to bottom: **Welcome** (your cut-out character on a warm brown gradient) → **Portfolio** (a sideways-scrolling brick wall of your work) → **Albums** → **Commissions** (a slideshow of your commission types and prices) → **About** → **Connect**.
 
 ---
 
-## For the artist: editing your gallery
+## For the artist: editing your portfolio
 
 ### Log in
 1. Go to **https://app.pagescms.org**.
 2. Click **Sign in with GitHub** and use your GitHub account.
-3. Open the **yazartsgallery** repository. If you don't see it, follow "Connect Pages CMS" in the one-time setup below.
+3. Open the **yazarts.github.io** repository.
 
-The left sidebar has four sections: **Gallery**, **Site settings** and **Media**.
+The left sidebar shows **Portfolio**, **Albums**, **Commissions**, **Site settings** and **Media**.
 
-### Add a new artwork
-1. Click **Gallery**.
-2. Scroll to the bottom of the *Artworks* list and click **Add an entry**. (The button may be worded slightly differently, such as "Add item".)
-3. In **Image**, click to upload a picture from your computer, or pick one you uploaded before.
-4. Type a **Title** if you want one (optional) and a **Caption**. The caption shows under the picture when someone opens it full size.
-5. Click **Save** (top right). Your site updates in about 1 to 2 minutes.
+### Welcome section (top of the page)
+In **Site settings**:
+* **Welcome image**: upload a **PNG with a transparent background** (a character cut out from its background). It floats on the brown gradient with no box around it. A normal rectangular picture works too, but it will look like a box.
+  To make a cut-out for free: export your character layer alone as PNG from your drawing app, or use a free background remover such as remove.bg or Photopea (Select → Remove background) and save as PNG.
+* **Welcome image description**: a few words for screen readers.
+* **Welcome title** ("Welcome!"), **Welcome subtitle** ("To my portfolio") and **Welcome intro** (the short line below).
+* **Site name**: shown top-left next to the music button and in the footer.
+
+### Portfolio
+1. Click **Portfolio**. Scroll to the bottom of the *Artworks* list and click **Add an entry**.
+2. **Image**: upload or pick a picture. Any shape works: tall, square or wide pieces keep their real proportions and are packed like bricks.
+3. Optional **Title**, a **Caption** (shown when someone opens the piece full size), and **Show bigger** to make it a big tile. The first artwork is always big.
+4. Click **Save**. The site updates in about 1 to 2 minutes.
+
+* **Reorder:** drag an entry by its handle. The first one is the first (big) tile on the left.
+* **Edit:** click an entry to expand it, change the text, **Save**.
+* **Delete:** use the entry's menu or trash icon, then **Save**. The file stays in **Media** until you delete it there.
+
+Visitors scroll the portfolio sideways (mouse wheel, trackpad, drag, the arrows, or swipe on a phone). Clicking a piece opens the full-size viewer.
 
 Tip: JPG or WEBP files about 2000 px on the long side, under 1 to 2 MB, keep the site fast.
 
-### Change a caption or title
-In **Gallery**, click an artwork in the list to expand it, edit the text, then click **Save**.
+### Albums
+1. Click **Albums**, then **Add an entry** under *Albums*.
+2. **Album name**, **Album cover** (square works best), optional **Description**.
+3. **Album music (optional)**: an mp3, m4a, ogg or wav that plays while the album is open (the background music pauses meanwhile).
+4. Under **Artworks in this album**, add each piece (**Image**, **Title**, **Caption**) and drag to reorder.
+5. **Save**. To delete an album, open its menu (⋯) and choose **Remove**, then **Save**.
 
-### Reorder artworks
-In **Gallery**, drag an artwork by its **handle** (the dotted grip on the left of each entry) up or down, then **Save**.
-The first artwork in the list is the first one on the website (top-left).
-
-### Delete an artwork
-In **Gallery**, open the entry's menu or the trash icon next to it, choose **Remove**, then **Save**.
-That takes it off the website. The image file stays in **Media**. To delete the file too, go to **Media → images/artworks**, select it and delete it. This step is optional.
+### Commissions
+* **Open or closed:** in **Site settings**, flip **Commissions open?** and check the two messages (one for open, one for closed).
+* **Commission types (the slideshow):** click **Commissions**. Each entry is one slide:
+  * **Tier name** (e.g. *Portraits*, *Full Body Character*), shown big.
+  * **Example image**, any shape (your own art works best).
+  * **Description**.
+  * **Price**, shown in the outlined box (e.g. *$25*, *from $40*).
+  * **Extra notes** (optional small text under the price).
+  Drag entries to reorder, **Add an entry** for a new type, remove one to delete it, then **Save**. The slides switch every 5 seconds and pause while a visitor hovers, touches or uses the keyboard on them.
+* The three starting slides use **public-domain example paintings** (see "Example images" below) and say "Example: replace with your own art." Replace each **Example image** with your own work and clear the **Extra notes**.
 
 ### Social links
-Go to **Site settings → Social links**, where you can:
-* edit a name or link,
-* **Add an entry** for a new one (e.g. *YouTube*, `https://youtube.com/@yazarts`),
-* drag entries to reorder them, or remove one.
+**Site settings → Social links**: edit, add (**Add an entry**), reorder or remove, then **Save**. Instagram, Reddit, Ko-fi, X/Twitter, TikTok and YouTube get matching icons automatically.
 
-Then click **Save**. Instagram, Reddit, Ko-fi, X/Twitter, TikTok and YouTube get matching icons automatically. Any other link gets a link icon.
-
-### Commissions open / closed
-In **Site settings**, flip **Commissions open?**, check the two messages (one for open, one for closed), and click **Save**. The message sits right above your social links, so it's a good place to say *how* to reach you (e.g. "Message me on Instagram or TikTok").
-
-### Likes
-Under every artwork (and in the full-size viewer) there's a small heart with the number of likes.
-* One like per browser: the heart turns caramel and a second click does nothing.
-* Counts belong to the image **file name**, so reordering or retitling a piece keeps its likes. Uploading a different file starts that piece at zero.
-* Nothing to set up or log into. If the counter service is ever down or slow, the numbers just hide; the hearts still work and those likes are sent the next time the visitor comes back.
-
-### Views
-Next to the heart there's an eye with the number of views. A view is counted when someone opens a piece in the full-size viewer (once per piece per browser visit). Same free counter service as the likes, nothing to set up.
-
-### Gallery: two rows + "View more"
-The Gallery shows two rows (4 per row on a computer, 2 on a phone). If there are more artworks, the last slot shows **View more** and the number left; clicking it smoothly opens the full grid, with **Show less** at the bottom.
-
-### Albums
-1. Click **Albums** in the left menu, then **Add an entry** under *Albums*.
-2. **Album name**, **Album cover** (square works best), optional **Description**.
-3. **Album music (optional…)**: upload an mp3, m4a, ogg or wav. It starts playing when a visitor opens the album and stops when they close it (the background music pauses meanwhile). Click the ✕ / remove on the field to take the music off.
-4. Under **Artworks in this album**, click **Add an entry** for each piece: **Image**, **Title (optional)**, **Caption**. Drag the handles to reorder.
-5. Click **Save**. To delete an album, open its menu (⋯) in the list and choose **Remove**, then **Save**.
-Until the first album is saved, the site shows a small "Albums coming soon" card. Inside an album, the background and the viewer are tinted with the cover's colour.
+### Likes and views
+Every artwork has a heart (likes) and an eye (views), on the tile and in the viewer. One like per browser. Counts belong to the image **file name**, so reordering or retitling keeps them; uploading a different file starts at zero. A view is counted once per piece per visit when someone opens it in the viewer.
 
 ### Background music
-In **Site settings**, **Background music (optional…)**: upload a light track (mp3/m4a/ogg/wav, ideally a few MB). It loops softly (35 % volume). Browsers don't allow sound before a visitor interacts, so it starts right away where allowed, otherwise on the visitor's first click, tap or key press. The small blue equalizer next to the site name toggles it (the choice is remembered). Remove the file and **Save** to turn the music off; the icon disappears.
+**Site settings → Background music (optional)**: upload a light track. It loops softly. Browsers block sound until a visitor interacts, so it starts right away where allowed, otherwise on the first click, tap or key press. The small blue equalizer next to the site name toggles it. Remove the file and **Save** to turn the music off.
 
 ### Image quality
-Your uploads are published exactly as uploaded (Pages CMS never resizes or recompresses them). The grid uses small previews made automatically at publish time so the page loads fast; opening a piece always loads your original file at full resolution, and zooming in shows full detail. For the sharpest result, export from your drawing app at full canvas size and upload that file (not a screenshot or a "shared" copy from a chat app).
-
-### Other things you can change in Site settings
-About text, the tagline under the title, the banner image (use a wide picture, e.g. 2400 × 900), the two lines of the banner title, and the site name.
+Uploads are published exactly as uploaded. The portfolio and album tiles use small previews made automatically at publish time; opening a piece always loads your original at full resolution, and zooming shows full detail.
 
 ### When do changes appear?
-Each **Save** goes straight to GitHub, and the site republishes automatically. It usually takes **1 to 2 minutes**. Your browser may cache the page for a few more minutes, so if you still see the old version, refresh.
-To watch it happen, open the repository on GitHub → **Actions** tab. A green tick means it's live.
+Usually **1 to 2 minutes** after **Save**. Refresh if you still see the old version. On GitHub, the **Actions** tab shows a green tick when it's live.
 
 ### Placeholders
-The 8 abstract images labelled **PLACEHOLDER** and the **placeholder banner** are only there to show the layout. Remove them in **Gallery** once you've added your real work, and pick your own banner in **Site settings**.
+The abstract images labelled **PLACEHOLDER** in the portfolio are only there to show the layout. Remove them in **Portfolio** once you've added more real work.
 
 ---
 
-## One-time setup (going live)
+## Example images (commission slides)
 
-Everything here is free.
+All three are **public domain** (free to use, no attribution required), downloaded from Wikimedia Commons and resized to 1100 px tall:
 
-1. **Create the repository.** On GitHub, signed in as the artist, go to **New repository**. Name it `yazartsgallery`, make it **Public** (GitHub Pages is free only for public repos), and **don't** add a README, .gitignore or license.
-2. **Push this folder** from this machine:
-   ```bash
-   cd yazartsgallery-static
-   git remote add origin https://github.com/yazarts/yazartsgallery.git
-   git push -u origin main
-   ```
-   (GitHub asks for a login. Use a [personal access token](https://github.com/settings/tokens) or GitHub Desktop / `gh auth login`. Or skip the command line: on the empty repo page choose "uploading an existing file" and drag in the folder contents, including the hidden `.pages.yml`, `.nojekyll` and `.github/` folder.)
-3. **Turn on Pages.** In the repo go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
-   Then in the **Actions** tab, re-run "Deploy to GitHub Pages" (or push any change). After the green tick the site is live at
-   **https://yazarts.github.io/yazartsgallery/**
-4. **Connect Pages CMS.** Go to https://app.pagescms.org and **Sign in with GitHub**. When asked, **install the Pages CMS GitHub App**, choose *Only select repositories* and select `yazartsgallery`. Open the repo. Pages CMS reads the included `.pages.yml`, and **Gallery / Site settings / Media** appear.
-5. Optionally add a **custom domain** (needs a paid domain, about $10/yr, so skip it to stay at $0). If you add one, put it in Settings → Pages → Custom domain and add a `CNAME` file with the domain. The workflow already copies it.
-6. Put the site link in the Instagram, TikTok, Reddit and Ko-fi bios.
+| File | Work | Source |
+|---|---|---|
+| `images/examples/portrait-example.jpg` | Johannes Vermeer, *Girl with a Pearl Earring* (c. 1665) | https://commons.wikimedia.org/wiki/File:Meisje_met_de_parel.jpg |
+| `images/examples/half-body-example.jpg` | Leonardo da Vinci, *Mona Lisa* (c. 1503–1519) | https://commons.wikimedia.org/wiki/File:Mona_Lisa,_by_Leonardo_da_Vinci,_from_C2RMF_retouched.jpg |
+| `images/examples/full-body-example.jpg` | John Singer Sargent, *Madame X* (1883–84), The Met | https://commons.wikimedia.org/wiki/File:Madame_X_(Madame_Pierre_Gautreau)_MET_DT278076.jpg |
+
+The welcome image `images/site/hero-cutout.png` is a background-removed cut-out of the artist's own piece `images/artworks/img1452.jpeg` (made with the free, open-source `rembg` tool).
+
+---
+
+## Hosting (already set up)
+
+* Repository `yazarts/yazarts.github.io` (public; GitHub Pages is free for public repos). Because the repo is named `<user>.github.io`, the site lives at the root: **https://yazarts.github.io/**. The old address `https://yazarts.github.io/yazartsgallery/` no longer serves the site.
+* **Settings → Pages → Source: GitHub Actions**. `.github/workflows/pages.yml` deploys on every push to `main`.
+* Pages CMS: the Pages CMS GitHub App must have access to `yazarts.github.io` (GitHub → Settings → Applications → Pages CMS → Configure).
+* Optional custom domain (paid, about $10/yr, so skipped to stay at $0).
 
 ---
 
 ## For developers
 
 ```
-index.html              the one page (nav + music toggle, banner, gallery, albums, about, connect, album view, viewer)
-assets/style.css        styles: dark navy, steel blue and caramel; Quicksand and Nunito fonts
-assets/site.js          loads content/*.json, renders the grid (2 rows + View more), albums, likes + views (Abacus), music, the artwork viewer
-content/gallery.json    { "artworks": [ { "image", "title", "caption" } ] }   (order = display order)
-content/site.json       siteName, heroTitle/heroSubtitle, tagline, heroImage, about,
-                        commissionsOpen, commissionText, commissionClosedText, links[]
-images/artworks/        artwork files       images/site/  banner
-.pages.yml              Pages CMS configuration (what the editor shows)
-.github/workflows/pages.yml   deploys index.html, 404.html, assets, content, images to GitHub Pages on push to main
-scripts/                local helpers (not deployed): placeholder generator, screenshot/check script
+index.html              the one page: nav + music toggle, welcome, portfolio band, albums, commissions slideshow, about, connect, album view, viewer
+assets/style.css        styles: dark navy, steel blue and caramel; Quicksand and Nunito
+assets/site.js          loads content/*.json; welcome, portfolio brick packer + horizontal scroller, albums, commission slideshow,
+                        likes + views (Abacus), music, the artwork viewer
+content/portfolio.json  { "artworks": [ { "image", "title", "caption", "featured"? } ] }   (order = display order)
+content/albums.json     { "albums": [ { "name", "cover", "description", "music", "artworks": [...] } ] }
+content/commissions.json{ "tiers": [ { "name", "image", "description", "price", "notes" } ] }
+content/site.json       siteName, heroImage, heroImageAlt, heroTitle, heroSubtitle, heroIntro, about,
+                        commissionsOpen, commissionText, commissionClosedText, links[], music
+images/artworks/  images/albums/  images/commissions/  images/examples/  images/site/      audio/
+.pages.yml              Pages CMS configuration
+scripts/migrate_portfolio.py  one-off (re-runnable) migration from the old gallery.json/site.json schema
+scripts/make_thumbs.py  run by the deploy: WebP previews + every image's width/height -> content/thumbs.json
+scripts/build_local.sh  builds the site like the deploy into /tmp/yaz-build (root + a sub-path copy)
+scripts/check.js        Playwright end-to-end checks + screenshots (Abacus mocked)
 ```
 
-* **Preview locally:** `python3 -m http.server 8090`, then open http://localhost:8090. It needs a local server, because opening the file directly blocks `fetch` of the JSON.
-* **Checks and screenshots:** `npm install && npm run check` (needs Chrome at `/usr/bin/google-chrome` or `CHROME_PATH`, and the local server running). The like counter API is **mocked** inside the browser, so the tests never change the real counts. They cover counts, one like per browser, the viewer (open/close animation, tint, keyboard, focus trap), touch gestures on a phone (swipe, pinch, double-tap), the API being down or rate-limited, and request throttling.
-* **Likes:** `assets/site.js` calls `https://abacus.jasoncameron.dev/get/yazartsgallery/like-<file-name>` to read a count and `/hit/…` to add one (keys are created on the first like; an unknown key returns 404, which shows as 0). Abacus is free, needs no signup, allows CORS and has a limit of 30 requests per 10 s per visitor, so the site loads counts lazily as cards scroll into view through a small queue (max 24 per 10 s). Counters expire after 6 months without any reads or likes; every page view reads them, so they stay alive while the site has visitors. Requests time out after 8 s and the count hides. Likes that fail are kept in `localStorage` (`yaz.pendingLikes`) and retried on the next visit. Liked pieces are stored in `yaz.liked`.
-* **Counters:** likes `like-<file>` and views `view-<file>` in namespace `yazartsgallery`. Counts are read with `/info/…` (answers 200 with `exists:false` for keys nobody has hit yet, so there are no 404s in the console) and added with `/hit/…`. Views are hit when a piece becomes the current slide in the viewer, once per piece per browser session (`sessionStorage` `yaz.viewed`).
-* **Thumbnails / quality:** the deploy workflow runs `scripts/make_thumbs.py`, which writes WebP previews (max 1200 px) to `_site/thumbs/` and a map to `_site/content/thumbs.json` (the committed `content/thumbs.json` is just an empty placeholder). Only the grids use them; the viewer always loads the original file. Once a zoom settles, the viewer lays the image out at its real zoomed size (rather than only magnifying a screen-sized bitmap with a CSS transform), so browsers re-draw it from the full-resolution original. If thumbnail generation ever fails, the step is skipped and the grid falls back to the originals.
-* **Music:** `<audio id="bgAudio">` (site, volume 0.35, loop) and `<audio id="albumAudio">` (album, 0.6, loop). Autoplay is tried; if the browser blocks it, playback starts on the first pointerdown/keydown/touchend. The on/off choice is stored in `localStorage` `yaz.sound`. Uploads go to `audio/` (media source "music" in `.pages.yml`).
-* **Local test site:** `bash scripts/make_test_site.sh` builds `/tmp/yaz-test-site` (a copy with a TEST album, extra pieces and generated tones, never committed), serve it on :8091, then `node scripts/check.js` (Abacus mocked) saves screenshots to `screenshots/` (git-ignored).
-* **Image paths:** the CMS writes paths like `/images/artworks/x.jpg`. `site.js` strips the leading `/` so they resolve both at `user.github.io/yazartsgallery/` and on a custom domain.
-* **Viewer:** clicking a thumbnail (3:4, cropped from the centre) flies it into the viewer. On wide screens the artwork sits on the left with the title, description, heart and "3 / 8" on the right; on phones the title and description sit under the image. The backdrop is tinted with a darkened version of the artwork's own colour. Swipe (or ← → / the arrow buttons) slides between pieces like a phone gallery; pinch, double-tap, click or ctrl+scroll zooms, and swiping is paused while zoomed. Esc resets the zoom, then closes.
-* **Motion:** gentle fade-ins, soft hover lift and zoom, and the viewer animations. Under `prefers-reduced-motion` everything switches instantly.
+* **Portfolio band:** a fixed-height strip (2 rows; 380–560 px tall on desktop, 280–340 px on phones) that scrolls horizontally. `site.js` packs tiles into two lanes at their natural aspect ratio (big tiles span both lanes; a small look-ahead keeps the lanes even) using sizes from `thumbs.json`, so nothing jumps while images load. Vertical mouse-wheel is turned into smooth horizontal scrolling until the band reaches an end (then the page scrolls on); mouse drag has momentum; touch uses native scrolling. Arrows, a "Scroll/Swipe" hint and mask-image edge fades show there is more.
+* **Commission slideshow:** rAF-timed, 5 s per slide; the image slides in with a blur/scale crossfade, the name's letters stagger in, and the price box outline is drawn with an SVG stroke. Pauses on hover, focus, touch and when the tab is hidden; dots (with progress), prev/next, keyboard and swipe; with `prefers-reduced-motion` it does not auto-advance and switches without animation.
+* **Paths:** the CMS writes `/images/...`; `site.js` strips the leading `/`, so the site works at the root and under any sub-path (checked by `scripts/check.js`).
+* **Run the checks:** `npm install`, `bash scripts/build_local.sh`, serve `/tmp/yaz-build/site` on :8091 and `/tmp/yaz-build/sub` on :8092 (`python3 -m http.server`), then `node scripts/check.js`. Screenshots go to `screenshots/` (git-ignored).
+* **Likes / views:** `https://abacus.jasoncameron.dev`, keys `like-<file>` / `view-<file>`, read with `/info/…`, added with `/hit/…`, lazily loaded through a small rate-limited queue. The counter namespace is still `yazartsgallery` on purpose: renaming it would reset every existing count. Liked pieces are stored in `localStorage` (`yaz.liked`), failed likes in `yaz.pendingLikes`.
+* **Music:** `<audio id="bgAudio">` (site, 0.35, loop) and `<audio id="albumAudio">` (album, 0.6, loop); choice stored in `localStorage` `yaz.sound`.
+* **Viewer:** the clicked tile flies into a full-screen viewer tinted with the artwork's colour; desktop shows image left / text right, phones show the caption under the image. Swipe or arrows to browse, pinch/double-tap/ctrl+scroll to zoom with the full-resolution original.
 
 ## Limitations
 * Changes take about 1 to 2 minutes to go live (GitHub Actions plus Pages caching). There's no instant preview of unsaved edits.

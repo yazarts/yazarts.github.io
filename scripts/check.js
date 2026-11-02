@@ -1,128 +1,147 @@
-// Local check for the TEST site built by scripts/make_test_site.sh (served on :8091). The Abacus counter API is mocked,
-// so real likes/views are never touched. Usage: bash scripts/make_test_site.sh && (cd /tmp/yaz-test-site && python3 -m http.server 8091 &) && node scripts/check.js
+// Local end-to-end check of the portfolio site (Playwright + system Chrome). Not deployed.
+// 1) bash scripts/build_local.sh   2) serve /tmp/yaz-build/site on :8091 and /tmp/yaz-build/sub on :8092
+// 3) node scripts/check.js [baseURL]   -> screenshots in ./screenshots (gitignored)
 const { chromium } = require('playwright-core');
-const SH = require('path').join(__dirname, '..', 'screenshots') + '/'; require('fs').mkdirSync(SH, { recursive: true });
-const BASE = process.env.BASE || 'http://localhost:8091/';
-const ok = (c, m) => console.log((c ? '  ✓ ' : '  ✗ FAIL ') + m);
+const fs = require('fs'), path = require('path');
+const BASE = process.argv[2] || 'http://localhost:8091/';
+const SUB = process.env.SUB || 'http://localhost:8092/yazarts/';
+const OUT = path.join(__dirname, '..', 'screenshots'); fs.mkdirSync(OUT, { recursive: true });
+const shot = (p, n) => p.screenshot({ path: path.join(OUT, n) });
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+
+async function ctx(b, w, h, mob) {
+  const c = await b.newContext({ viewport: { width: w, height: h }, isMobile: mob, hasTouch: mob, deviceScaleFactor: mob ? 3 : 1 });
+  const hits = [];   // fake the free like/view counter so tests never touch the real counts
+  await c.route('https://abacus.jasoncameron.dev/**', r => { hits.push(r.request().url()); r.fulfill({ headers: { 'access-control-allow-origin': '*' }, contentType: 'application/json', body: '{"value":7}' }); });
+  const p = await c.newPage(); const errs = [];
+  p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
+  p.on('requestfailed', r => !/abacus|fonts\./.test(r.url()) && errs.push('request failed ' + r.url()));
+  return { c, p, errs, hits };
+}
+const go = (p, sel) => p.evaluate(s => document.querySelector(s).scrollIntoView({ behavior: 'instant', block: 'start' }), sel);
+
 (async () => {
-  const b = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', args: ['--no-sandbox'] });
-  const counters = {}; const log = [];
-  const mock = async (c) => c.route('https://abacus.jasoncameron.dev/**', r => {
-    const [, op, ns, key] = new URL(r.request().url()).pathname.split('/'); log.push(op + ' ' + key);
-    const h = { 'access-control-allow-origin': '*' };
-    if (op === 'hit') { counters[key] = (counters[key] || 0) + 1; return r.fulfill({ headers: h, contentType: 'application/json', body: JSON.stringify({ value: counters[key] }) }); }
-    if (op === 'info') return r.fulfill({ headers: h, contentType: 'application/json', body: JSON.stringify(key in counters ? { exists: true, value: counters[key] } : { exists: false, value: -1 }) });
-    r.fulfill({ status: 404, headers: h, body: '{}' });
-  });
-  counters['like-img1593'] = 12; counters['view-img1593'] = 87; counters['like-img1452'] = 5; counters['view-img1452'] = 40;
-  const errs = []; const watch = (p) => { p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text())); };
-  const tag = async (p, text) => p.evaluate(t => { const d = document.createElement('div'); d.textContent = t; d.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:9999;background:#c33;color:#fff;font:12px sans-serif;padding:3px 8px;border-radius:4px;pointer-events:none'; d.className = 'testtag'; document.body.appendChild(d); }, text);
-  const untag = (p) => p.evaluate(() => document.querySelectorAll('.testtag').forEach(e => e.remove()));
-
-  // ---------- desktop ----------
-  const dc = await b.newContext({ viewport: { width: 1440, height: 900 } }); await mock(dc);
-  const d = await dc.newPage(); watch(d);
-  await d.goto(BASE, { waitUntil: 'networkidle' }); await d.waitForTimeout(1500);
-  const bgState = await d.evaluate(() => ({ paused: document.querySelector('#bgAudio').paused, btn: !document.querySelector('#musicBtn').hidden }));
-  ok(bgState.btn, 'music icon visible when a background track is set'); console.log('    bg autoplay before any gesture: paused =', bgState.paused);
-  const bb = await d.locator('.brand').boundingBox(), mb = await d.locator('#musicBtn').boundingBox();
-  ok(mb.x > bb.x + bb.width && mb.x - (bb.x + bb.width) < 30 && Math.abs((mb.y + mb.height / 2) - (bb.y + bb.height / 2)) < 6, `music icon right next to the logo (gap ${Math.round(mb.x - bb.x - bb.width)}px)`);
-  ok(await d.locator('#musicBtn').evaluate(e => getComputedStyle(e).color) === 'rgb(156, 195, 230)', 'music icon is soft blue');
-  // first click anywhere starts it if autoplay was blocked
-  await d.mouse.click(700, 300); await d.waitForTimeout(1200);
-  ok(!(await d.evaluate(() => document.querySelector('#bgAudio').paused)), 'background music playing (after autoplay or first click)');
-  ok(await d.locator('#musicBtn.playing').count() === 1, 'equalizer animates while playing');
-  console.log('    bg volume', await d.evaluate(() => document.querySelector('#bgAudio').volume.toFixed(2)));
-  await tag(d, 'TEST DATA (local)'); await d.screenshot({ path: SH + 'music-icon.png', clip: { x: 0, y: 0, width: 520, height: 70 } });
-  await d.locator('#musicBtn').click(); await d.waitForTimeout(700);
-  ok(await d.evaluate(() => document.querySelector('#bgAudio').paused) && await d.evaluate(() => localStorage.getItem('yaz.sound')) === 'false', 'icon toggles mute, remembered in localStorage');
-  await d.screenshot({ path: SH + 'music-icon-muted.png', clip: { x: 0, y: 0, width: 520, height: 70 } });
-  await d.locator('#musicBtn').click(); await d.waitForTimeout(600);
-  ok(!(await d.evaluate(() => document.querySelector('#bgAudio').paused)), 'icon turns it back on');
-  // gallery 2 rows
-  await d.evaluate(() => document.querySelector('#gallery').scrollIntoView({ behavior: 'instant' })); await d.waitForTimeout(1200);
-  const g = await d.evaluate(() => { const cols = getComputedStyle(document.querySelector('#grid')).gridTemplateColumns.split(' ').length; return { cols, vis: [...document.querySelectorAll('#grid .card')].filter(c => c.offsetParent).length, total: document.querySelectorAll('#grid .card').length, more: document.querySelector('#grid .tile.more')?.textContent.trim() }; });
-  ok(g.vis === g.cols * 2 && g.more, `gallery shows 2 rows (${g.cols} cols, ${g.vis}/${g.total} visible), last slot = "${g.more}"`);
-  await d.waitForTimeout(300); await d.screenshot({ path: SH + 'gallery-viewmore.png' });
-  await d.locator('#grid .tile.more').click(); await d.waitForTimeout(250);
-  await d.screenshot({ path: SH + 'gallery-expanding.png' }); await d.waitForTimeout(1200);
-  const g2 = await d.evaluate(() => [...document.querySelectorAll('#grid .card')].filter(c => c.offsetParent).length);
-  ok(g2 === g.total && await d.locator('#lessBtn').isVisible(), `expanded to all ${g2} with "Show less"`);
-  await d.locator('#lessBtn').scrollIntoViewIfNeeded(); await d.screenshot({ path: SH + 'gallery-expanded.png' });
-  await d.locator('#lessBtn').click(); await d.waitForTimeout(1200);
-  ok(await d.evaluate(() => [...document.querySelectorAll('#grid .card')].filter(c => c.offsetParent).length) === g.vis, 'Show less collapses back to 2 rows');
-  // counts
-  const c0 = d.locator('#grid .card').first();
-  ok(await c0.locator('.like .n').textContent() === '12' && await c0.locator('.views .n').textContent() === '87', 'grid card shows likes 12 + views 87 (eye icon)');
-  ok(!log.some(l => l.startsWith('get ')), 'counts read with /info (no 404s for new pieces)');
-  await untag(d);
-  const cb = await c0.boundingBox(); await d.screenshot({ path: SH + 'card-counts.png', clip: { x: cb.x - 16, y: cb.y - 16, width: cb.width + 32, height: cb.height + 32 } });
-  // viewer full-res
-  await c0.locator('.tile').click(); await d.waitForTimeout(1600);
-  const vi = await d.evaluate(() => { const im = document.querySelector('.lb-slide[aria-hidden="false"] img'); return { src: im.currentSrc, nw: im.naturalWidth, nh: im.naturalHeight, views: document.querySelector('#lbViews .n').textContent, likes: document.querySelector('#lbLike .n').textContent }; });
-  ok(/images\/artworks\/img1593\.jpeg$/.test(vi.src) && vi.nw === 3092, `viewer loads the original ${vi.src.split('/').pop()} at ${vi.nw}×${vi.nh}`);
-  ok(vi.views === '88' && vi.likes === '12', `viewer shows likes ${vi.likes} + views ${vi.views} (view counted on open)`);
-  const thumbSrc = await c0.locator('img').evaluate(e => e.currentSrc); console.log('    grid tile uses', thumbSrc.replace(BASE, ''));
-  await d.screenshot({ path: SH + 'viewer-desktop.png' });
-  for (let i = 0; i < 5; i++) { await d.keyboard.press('+'); await d.waitForTimeout(350); }
-  await d.waitForTimeout(800);
-  const z = await d.evaluate(() => { const im = document.querySelector('.lb-slide[aria-hidden="false"] img'); const r = im.getBoundingClientRect(); return { hi: im.classList.contains('hi'), w: r.width, cw: im.clientWidth, x: r.left, y: r.top }; });
-  ok(z.hi && Math.abs(z.cw - z.w) < 1, `zoomed: image laid out at real zoomed size ${Math.round(z.w)}px (≥ ${3092}px source → full detail)`);
-  await d.screenshot({ path: SH + 'viewer-zoom-fullres.png', clip: { x: 300, y: 250, width: 400, height: 400 } });
-  await d.keyboard.press('Escape'); await d.waitForTimeout(400); await d.keyboard.press('Escape'); await d.waitForTimeout(900);
-  await d.reload({ waitUntil: 'networkidle' }); await d.waitForTimeout(800);
-  await d.locator('#grid .card').first().locator('.tile').click(); await d.waitForTimeout(1200);
-  ok(counters['view-img1593'] === 88, 'second open in the same session does not add another view');
-  await d.keyboard.press('Escape'); await d.waitForTimeout(900);
-  // albums
-  await d.evaluate(() => document.querySelector('#albums').scrollIntoView({ behavior: 'instant' })); await d.waitForTimeout(1300);
-  const sq = await d.locator('.album-tile').first().boundingBox();
-  ok(Math.abs(sq.width - sq.height) < 1.5, `album covers are square (${Math.round(sq.width)}×${Math.round(sq.height)})`);
-  ok(await d.locator('#menu a[data-nav="albums"]').count() === 1, 'Albums in the nav');
-  const order = await d.evaluate(() => [...document.querySelectorAll('main > section')].map(s => s.id).join(','));
-  ok(order === 'home,gallery,albums,about,connect', 'Albums section right under Gallery: ' + order);
-  await tag(d, 'TEST ALBUMS (local test data, not published)'); await d.screenshot({ path: SH + 'albums-desktop.png' }); await untag(d);
-  await d.locator('.album-tile').first().click(); await d.waitForTimeout(150);
-  ok(await d.locator('#av .lb-flyer').count() === 1, 'album opens with the shared-element flight');
-  await d.waitForTimeout(1200);
-  const avs = await d.evaluate(() => ({ tint: getComputedStyle(document.querySelector('#avTint')).backgroundColor, al: !document.querySelector('#albumAudio').paused, alsrc: document.querySelector('#albumAudio').currentSrc, bg: document.querySelector('#bgAudio').paused, head: document.querySelector('.av-head').getBoundingClientRect().toJSON(), n: document.querySelectorAll('#avGrid .card').length, tileAR: (() => { const r = document.querySelector('#avGrid .tile').getBoundingClientRect(); return r.width / r.height; })() }));
-  ok(avs.al && /test-album\.mp3$/.test(avs.alsrc), 'album music is playing: ' + avs.alsrc.split('/').pop());
-  ok(avs.bg, 'background music paused while the album plays');
-  ok(Math.abs(avs.tileAR - 0.75) < 0.01 && avs.n === 5, `album artworks in 3:4 grid (${avs.n} pieces)`);
-  ok(avs.head.top < 60 && avs.head.left < 200, 'small cover icon + album name at the top left');
-  console.log('    album backdrop tint', avs.tint);
-  await tag(d, 'TEST ALBUM (local test data)'); await d.screenshot({ path: SH + 'album-open.png' }); await untag(d);
-  await d.locator('#avGrid .tile').nth(1).click(); await d.waitForTimeout(1600);
-  const vt = await d.evaluate(() => ({ tint: getComputedStyle(document.querySelector('#lbTint')).backgroundColor, data: document.querySelector('#lb').dataset.tint, av: document.querySelector('#av').dataset.tint }));
-  ok(vt.data === vt.av && vt.data, `viewer tint in album = cover colour (${vt.data}) for an artwork that isn't the cover`);
-  await tag(d, 'TEST ALBUM (local test data)'); await d.screenshot({ path: SH + 'album-viewer.png' }); await untag(d);
-  await d.keyboard.press('ArrowRight'); await d.waitForTimeout(900);
-  ok(await d.evaluate(() => document.querySelector('#lb').dataset.tint) === vt.data, 'tint stays the cover colour while swiping');
-  await d.keyboard.press('Escape'); await d.waitForTimeout(900);
-  ok(await d.locator('#lb').isHidden() && await d.locator('#av').isVisible(), 'closing the viewer returns to the album');
-  await d.keyboard.press('Escape'); await d.waitForTimeout(1300);
-  const after = await d.evaluate(() => ({ al: document.querySelector('#albumAudio').paused, bg: document.querySelector('#bgAudio').paused, av: document.querySelector('#av').hidden, ov: document.body.style.overflow }));
-  ok(after.al && !after.bg && after.av && after.ov === '', 'closing the album stops its music and resumes the background music');
-
-  // ---------- mobile ----------
-  const mc = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await mock(mc);
-  const m = await mc.newPage(); watch(m);
-  await m.goto(BASE, { waitUntil: 'networkidle' }); await m.waitForTimeout(1500);
-  await tag(m, 'TEST DATA (local)'); await m.screenshot({ path: SH + 'mobile-top-music.png' });
-  const mm = await m.evaluate(() => { const cols = getComputedStyle(document.querySelector('#grid')).gridTemplateColumns.split(' ').length; return { cols, vis: [...document.querySelectorAll('#grid .card')].filter(c => c.offsetParent).length }; });
-  ok(mm.cols === 2 && mm.vis === 4, `mobile: 2 columns × 2 rows (${mm.vis} visible incl. View more)`);
-  await m.evaluate(() => document.querySelector('#gallery').scrollIntoView({ behavior: 'instant' })); await m.waitForTimeout(1200);
-  await m.screenshot({ path: SH + 'mobile-gallery-viewmore.png' });
-  await m.evaluate(() => document.querySelector('#albums').scrollIntoView({ behavior: 'instant' })); await m.waitForTimeout(1200);
-  await m.screenshot({ path: SH + 'mobile-albums.png' });
-  await m.locator('.album-tile').first().tap(); await m.waitForTimeout(1500);
-  ok(!(await m.evaluate(() => document.querySelector('#albumAudio').paused)), 'mobile: album music plays on tap');
-  await m.screenshot({ path: SH + 'mobile-album-open.png' });
-  await m.locator('#avGrid .tile').first().tap(); await m.waitForTimeout(1600);
-  await m.screenshot({ path: SH + 'mobile-album-viewer.png' });
-  const mt = await m.evaluate(() => { const im = document.querySelector('.lb-slide[aria-hidden="false"] img').getBoundingClientRect(), t = document.querySelector('#lbText').getBoundingClientRect(); return im.bottom <= t.top + 2; });
-  ok(mt, 'mobile: title + caption below the image');
-  await untag(m);
-  console.log(errs.length ? '  console errors: ' + errs.join(' | ') : '  ✓ no console errors');
-  await b.close();
+  const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
+  for (const [w, h, mob] of [[1440, 900, false], [390, 844, true]]) {
+    const tag = mob ? 'mobile' : 'desktop', L = `[${w}] `;
+    const { c, p, errs, hits } = await ctx(b, w, h, mob);
+    await p.goto(BASE, { waitUntil: 'load' }); await p.mouse.move(2, 2); await p.waitForTimeout(2600);
+    // hero: transparent image, no box
+    const hero = await p.evaluate(() => {
+      const i = document.querySelector('#heroImg'), f = i.closest('figure'), cs = getComputedStyle(i), fs = getComputedStyle(f);
+      const r = i.getBoundingClientRect(), t = document.querySelector('.hero-text').getBoundingClientRect();
+      return { loaded: i.complete && i.naturalWidth > 0, png: /\.png/.test(i.currentSrc), bg: cs.backgroundColor + '|' + fs.backgroundColor, border: cs.borderStyle + fs.borderStyle,
+        shadow: cs.boxShadow + fs.boxShadow, filter: cs.filter, imgLeft: r.left, imgBottom: r.bottom, textLeft: t.left, textTop: t.top };
+    });
+    ok(hero.loaded && hero.png, L + 'hero cut-out PNG loaded');
+    ok(hero.bg === 'rgba(0, 0, 0, 0)|rgba(0, 0, 0, 0)' && hero.shadow === 'nonenone' && !/solid/.test(hero.border), L + 'hero image has no box (bg/border/box-shadow none; filter: ' + hero.filter.slice(0, 40) + ')');
+    ok(mob ? hero.imgBottom <= hero.textTop + 5 : hero.imgLeft < hero.textLeft, L + (mob ? 'hero image stacks above text' : 'hero image left of text'));
+    await shot(p, mob ? 'mobile-hero.png' : 'hero-desktop.png');
+    // visible text must not say gallery
+    const txt = await p.evaluate(() => document.body.innerText + document.title + [...document.querySelectorAll('[aria-label],[alt],[title],meta[content]')].map(e => (e.getAttribute('aria-label') || '') + (e.getAttribute('alt') || '') + (e.getAttribute('title') || '') + (e.getAttribute('content') || '')).join(' '));
+    ok(!/gallery/i.test(txt), L + 'no "gallery" in visible text, titles, labels or meta');
+    // portfolio band
+    await go(p, '#portfolio'); await p.waitForTimeout(1400);
+    const pf = await p.evaluate(() => { const s = document.querySelector('#pfScroll'), bs = [...document.querySelectorAll('.brick')];
+      const asp = bs.map(x => { const r = x.getBoundingClientRect(), i = x.querySelector('img'); return [+(r.width / r.height).toFixed(2), +(i.naturalWidth / i.naturalHeight).toFixed(2)]; });
+      return { n: bs.length, sw: s.scrollWidth, cw: s.clientWidth, th: document.querySelector('#pfTrack').getBoundingClientRect().height, firstH: bs[0].getBoundingClientRect().height, asp,
+        sized: bs.every(x => x.style.getPropertyValue('--w') || x.style.width), mask: getComputedStyle(s).maskImage || getComputedStyle(s).webkitMaskImage }; });
+    ok(pf.n === 9, L + `portfolio shows all ${pf.n} artworks`);
+    ok(pf.sw > pf.cw + 50, L + `band scrolls sideways (scrollWidth ${pf.sw} > ${pf.cw})`);
+    ok(pf.firstH > pf.th * 0.9, L + 'first tile is big (spans both rows)');
+    ok(pf.asp.every(([t, n]) => !n || Math.abs(t - n) / n < 0.04), L + 'every tile keeps its natural aspect ratio (tile:image ' + pf.asp.map(a => a.join(':')).join(' ') + ')');
+    ok(/gradient/.test(pf.mask || ''), L + 'edge fades present');
+    await shot(p, mob ? 'mobile-portfolio.png' : 'portfolio-desktop.png');
+    let x0 = await p.$eval('#pfScroll', s => s.scrollLeft);
+    if (!mob) {
+      const bx = await p.$eval('#pfScroll', s => { const r = s.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+      await p.click('#pfNext'); await p.waitForTimeout(900);
+      const x1 = await p.$eval('#pfScroll', s => s.scrollLeft); ok(x1 > x0 + 50, L + `next arrow scrolls (${x0} -> ${x1})`);
+      await p.mouse.move(...bx); await p.mouse.wheel(0, -600); await p.waitForTimeout(900);
+      const x2 = await p.$eval('#pfScroll', s => s.scrollLeft); ok(x2 < x1 - 50, L + `mouse wheel scrolls the band sideways (${x1} -> ${x2})`);
+      await p.mouse.wheel(0, 600); await p.waitForTimeout(900);
+      await p.$eval('#pfScroll', s => s.scrollLeft = 0); await p.mouse.move(2, 2); await p.waitForTimeout(600);
+    } else {
+      const s = await p.$eval('#pfScroll', s => { const r = s.getBoundingClientRect(); return { y: r.top + r.height / 2 }; });
+      const cdp = await c.newCDPSession(p);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 330, y: s.y }] });
+      for (let k = 1; k <= 8; k++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 330 - k * 30, y: s.y }] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await p.waitForTimeout(900);
+      const x1 = await p.$eval('#pfScroll', s => s.scrollLeft); ok(x1 > x0 + 100, L + `touch swipe scrolls the band (${x0} -> ${x1})`);
+      await p.$eval('#pfScroll', s => s.scrollLeft = 0); await p.waitForTimeout(300);
+    }
+    // likes + views
+    const likeHits = hits.length; await p.click('.brick .like'); await p.waitForTimeout(500);
+    ok(await p.$eval('.brick .like', b => b.getAttribute('aria-pressed')) === 'true' && hits.length > likeHits, L + 'like on portfolio overlay works (counter called)');
+    await p.click('.brick .like'); await p.waitForTimeout(300);   // un-like
+    // viewer
+    await p.click('.brick:nth-child(2) .brick-btn, .brick:nth-child(2) img', { position: { x: 30, y: 30 } }).catch(() => p.click('.brick:nth-child(2)'));
+    await p.waitForTimeout(1200);
+    const lb = await p.evaluate(() => ({ open: document.querySelector('#lb').classList.contains('open'), idx: document.querySelector('#lbIdx').textContent, title: document.querySelector('#lbTitle').textContent,
+      orig: [...document.querySelectorAll('#lbTrack img')].some(i => /images\/artworks\//.test(i.currentSrc) && !/thumbs\//.test(i.currentSrc)), tint: getComputedStyle(document.querySelector('#lbTint')).backgroundColor }));
+    ok(lb.open && /2\s*\/\s*9/.test(lb.idx), L + `viewer opens on clicked artwork (${lb.idx} "${lb.title}")`);
+    ok(lb.orig, L + 'viewer shows full-res original');
+    ok(hits.some(u => /view/.test(u)), L + 'view counted');
+    await p.keyboard.press('ArrowRight'); await p.waitForTimeout(700);
+    ok(/3\s*\/\s*9/.test(await p.$eval('#lbIdx', e => e.textContent)), L + 'viewer next works');
+    await shot(p, `_viewer-${tag}.png`);
+    await p.keyboard.press('Escape'); await p.waitForTimeout(900); if (mob) await p.click('#lbClose').catch(() => {});
+    ok(!(await p.$eval('#lb', e => e.classList.contains('open'))), L + 'viewer closes');
+    // albums
+    await go(p, '#albums'); await p.waitForTimeout(800);
+    ok(/Test✨/.test(await p.$eval('#albumGrid', e => e.innerText)), L + 'her "Test✨" album is listed');
+    await p.click('.album-tile'); await p.waitForTimeout(1600);
+    ok(await p.$eval('#av', e => e.classList.contains('open')), L + 'album opens');
+    const am = await p.evaluate(() => ({ src: document.querySelector('#albumAudio').getAttribute('src'), playing: !document.querySelector('#albumAudio').paused, bg: document.querySelector('#bgAudio').paused }));
+    ok(!am.src || (am.playing), L + 'album music ' + (am.src ? 'plays (' + am.src.split('/').pop() + ')' : 'n/a (album has none)'));
+    await p.click('#avClose'); await p.waitForTimeout(900);
+    // music
+    const mus = await p.evaluate(() => ({ shown: !document.querySelector('#musicBtn').hidden, src: document.querySelector('#bgAudio').src }));
+    ok(mus.shown && /audio\//.test(mus.src), L + 'music toggle shown by the logo with her track ' + mus.src.split('/').pop());
+    const isOn = () => p.evaluate(() => !document.querySelector('#bgAudio').paused && document.querySelector('#musicBtn').getAttribute('aria-pressed') === 'true');
+    const before = await isOn();   // music is on by default and starts with the first interaction (unchanged behaviour)
+    await p.click('#musicBtn'); await p.waitForTimeout(1200); const mid = await isOn();
+    await p.click('#musicBtn'); await p.waitForTimeout(1200); const after = await isOn();
+    ok(before && !mid && after, L + `music toggle flips background music (playing ${before} -> ${mid} -> ${after})`);
+    // commissions slideshow
+    await p.evaluate(() => document.querySelector('#tiers').scrollIntoView({ behavior: 'instant', block: 'center' })); await p.mouse.move(2, 2); await p.waitForTimeout(400);
+    const tiers = await p.$$eval('.tier', t => t.map(x => x.querySelector('h3, .tier-name')?.textContent.trim()));
+    ok(tiers.length === 3, L + 'tiers: ' + tiers.join(' | '));
+    const cur = () => p.$$eval('.tier', t => t.findIndex(x => x.classList.contains('on')));
+    const t0 = Date.now(), a = await cur(); let changed = -1;
+    while (Date.now() - t0 < 7500) { await p.waitForTimeout(100); if ((await cur()) !== a) { changed = Date.now() - t0; break; } }
+    await p.waitForTimeout(650); await shot(p, mob ? '_mobile-commissions-mid.png' : 'commissions-mid-transition-desktop.png');
+    ok(changed > 0, L + `tier auto-advanced after ~${(changed / 1000).toFixed(1)} s of watching (cycle 5 s)`);
+    const gaps = await p.evaluate(() => new Promise(res => { const ts = [], st = document.querySelector('#tiersStage');
+      const mo = new MutationObserver(() => { const k = [...st.children].findIndex(x => x.classList.contains('on')); if (k !== ts.at(-1)?.k) ts.push({ k, t: performance.now() }); });
+      mo.observe(st, { subtree: true, attributes: true, attributeFilter: ['class'] }); setTimeout(() => { mo.disconnect(); res(ts.slice(1).map((x, i) => Math.round(x.t - ts[i].t))); }, 11500); }));
+    ok(gaps.length >= 1 && gaps.every(g => g > 4700 && g < 5300), L + `tiers rotate every ${gaps.map(g => (g / 1000).toFixed(2) + ' s').join(', ')}`);
+    await p.waitForTimeout(2200); await shot(p, mob ? 'mobile-commissions.png' : 'commissions-desktop.png');
+    if (!mob) {   // hover pauses
+      const box = await p.$eval('#tiersStage', e => { const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + 40]; });
+      await p.mouse.move(...box); const k = await cur(); await p.waitForTimeout(6000);
+      ok((await cur()) === k, L + 'hover pauses the slideshow'); await p.mouse.move(2, 2);
+      await p.click('#tNext'); await p.waitForTimeout(300); ok((await cur()) === (k + 1) % 3, L + 'next button works');
+      await p.click('#tDots .t-dot:first-child'); await p.waitForTimeout(300); ok((await cur()) === 0, L + 'dots work');
+    }
+    // nav anchors
+    await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(400);
+    if (mob) { await p.click('#menuBtn'); await p.waitForTimeout(400); }
+    await p.click('#menu a[href="#commissions"]'); await p.waitForTimeout(1400);
+    ok(Math.abs(await p.$eval('#commissions', e => e.getBoundingClientRect().top)) < 120, L + 'nav link scrolls to Commissions');
+    ok(errs.length === 0, L + 'no console errors' + (errs.length ? ': ' + errs.join(' || ') : ''));
+    await c.close();
+  }
+  // reduced motion: no auto-advance
+  { const { c, p, errs } = await ctx(b, 1440, 900, false); await c.close(); }
+  const rc = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' }); const rp = await rc.newPage();
+  await rp.goto(BASE, { waitUntil: 'load' }); await go(rp, '#commissions'); await rp.waitForTimeout(6500);
+  ok(await rp.$$eval('.tier', t => t.findIndex(x => x.classList.contains('on'))) === 0, '[reduced motion] tiers stay put'); await rc.close();
+  // sub-path
+  { const { c, p, errs } = await ctx(b, 1440, 900, false);
+    await p.goto(SUB, { waitUntil: 'load' }); await p.waitForTimeout(2500); await go(p, '#commissions'); await p.waitForTimeout(800);
+    const r = await p.evaluate(() => ({ hero: document.querySelector('#heroImg').naturalWidth, bricks: [...document.querySelectorAll('.brick img')].filter(i => i.complete && i.naturalWidth).length, tier: [...document.querySelectorAll('.tier img')].filter(i => i.naturalWidth).length }));
+    ok(r.hero > 0 && r.bricks >= 6 && r.tier >= 1 && !errs.length, `[sub-path ${SUB}] hero, ${r.bricks} tiles, tier images load` + (errs.length ? ' errors: ' + errs.join(' || ') : ''));
+    await c.close(); }
+  await b.close(); console.log(fails ? `${fails} FAILED` : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

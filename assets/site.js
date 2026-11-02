@@ -2,12 +2,14 @@
   const $ = (s) => document.querySelector(s);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  // CMS stores paths like "/images/x.jpg"; make them relative so the site works at user.github.io/yazartsgallery/ AND on a custom domain
+  // CMS stores paths like "/images/x.jpg"; make them relative so the site works at the domain root (yazarts.github.io) AND under any sub-path
   const asset = (p) => !p ? '' : /^(https?:)?\/\//.test(p) ? p : String(p).replace(/^\/+/, '');
   const json = (u) => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(u); return r.json(); });
-  let art = [], albums = [], thumbs = {};
-  // grid thumbnails are generated at deploy time (content/thumbs.json); the viewer always loads the untouched original
-  const thumb = (p) => thumbs[asset(p)] || asset(p);
+  let art = [], albums = [], tiers = [], thumbs = {}, sizes = {};
+  // grid thumbnails + image sizes are generated at deploy time (content/thumbs.json); the viewer always loads the untouched original
+  const clean = (p) => asset(p).split(/[?#]/)[0];
+  const thumb = (p) => thumbs[clean(p)] || asset(p);
+  const sizeOf = (p) => sizes[clean(p)] || null;          // [w, h] or null (then read from the image when it loads)
 
   $('#yr').textContent = new Date().getFullYear();
   requestAnimationFrame(() => document.body.classList.add('loaded'));
@@ -19,7 +21,7 @@
   $('#menuBtn').addEventListener('click', () => { const o = nav.classList.toggle('menu-open'); $('#menuBtn').setAttribute('aria-expanded', o); });
   document.querySelectorAll('#menu a').forEach(a => a.addEventListener('click', () => { nav.classList.remove('menu-open'); $('#menuBtn').setAttribute('aria-expanded', false); }));
   const secIO = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) document.querySelectorAll('#menu a').forEach(a => a.classList.toggle('active', a.dataset.nav === e.target.id)); }), { rootMargin: '-45% 0px -50% 0px' });
-  ['home', 'gallery', 'albums', 'about', 'connect'].forEach(id => secIO.observe(document.getElementById(id)));
+  ['home', 'portfolio', 'albums', 'commissions', 'about', 'connect'].forEach(id => secIO.observe(document.getElementById(id)));
 
   // gentle fade-in on scroll
   const io = !reduce && 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -6% 0px', threshold: .05 }) : null;
@@ -48,23 +50,32 @@
     if (s.siteName) { $('#brandName').textContent = s.siteName; $('#footName').textContent = s.siteName; }
     if (s.heroTitle != null) $('#heroTitle').textContent = s.heroTitle;
     if (s.heroSubtitle != null) $('#heroSubtitle').textContent = s.heroSubtitle;
-    if (s.tagline != null) $('#tagline').textContent = s.tagline;
-    if (s.heroImage) $('#heroImg').src = asset(s.heroImage);
+    const intro = s.heroIntro ?? s.tagline; if (intro != null) $('#heroIntro').textContent = intro;
+    $('#heroIntro').hidden = !$('#heroIntro').textContent.trim();
+    const hi = $('#heroImg');
+    if (s.heroImage) { const src = asset(s.heroImage); if (hi.getAttribute('src') !== src) hi.src = src; }
+    hi.alt = s.heroImageAlt || 'Artwork by @yazarts';
+    $('#home').classList.toggle('no-img', s.heroImage === '');
     $('#aboutText').textContent = s.about || '';
     $('#about').hidden = !s.about;
     const open = s.commissionsOpen !== false;
-    $('#commStatus').classList.toggle('closed', !open);
-    $('#commStatus b').textContent = open ? 'Commissions open' : 'Commissions closed';
+    $('#commKicker').classList.toggle('closed', !open);
+    $('#commKicker').textContent = open ? 'Open for commissions!' : 'Commissions closed for now';
     $('#commText').textContent = (open ? s.commissionText : s.commissionClosedText) || '';
+    $('#commText').hidden = !$('#commText').textContent;
     $('#links').innerHTML = (s.links || []).filter(l => l && l.url).map(l => `
       <li><a href="${esc(l.url)}" target="_blank" rel="noopener me"><span class="ico">${iconFor(l.label || '', l.url)}</span>
         <span><strong>${esc(l.label || handle(l.url))}</strong><small>${esc(handle(l.url))}</small></span>
         <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a></li>`).join('');
   }
+  const heroImg = $('#heroImg'); const heroOk = () => $('#home').classList.add('img-ok');
+  heroImg.complete && heroImg.naturalWidth ? heroOk() : heroImg.addEventListener('load', heroOk);
+  heroImg.addEventListener('error', () => $('#home').classList.add('no-img'));
 
   // ---------- likes ----------
   // Free, no-signup counter API (Abacus). One counter per artwork: <namespace>/like-<image file name>.
   // If the API is slow or down, the count is simply hidden; the heart still works and the like is sent later.
+  // NOTE: the namespace is the site's ORIGINAL id; keep it unchanged, or every existing like and view count resets to 0.
   const LIKES = { api: 'https://abacus.jasoncameron.dev', ns: 'yazartsgallery' };
   const store = {
     get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
@@ -155,7 +166,7 @@
       .catch(() => { const p = pending(); if (!p.includes(id)) store.set('yaz.pendingLikes', [...p, id]); });   // try again on the next visit
   }
 
-  // ---------- artwork cards (gallery + inside albums) ----------
+  // ---------- artwork cards (inside albums) ----------
   const cio = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) loadCount(e.target.dataset.art); }), { rootMargin: '400px 0px' }) : null;
   const cardHTML = (a, i) => {
     const label = a.title || a.caption || `Artwork ${i + 1}`;
@@ -172,52 +183,132 @@
     grid.querySelectorAll('.like').forEach(b => { paint(b.dataset.art); cio ? cio.observe(b) : loadCount(b.dataset.art); });
   }
 
-  // ---------- gallery: two rows, then a "View more" tile that expands the grid ----------
-  const grid = $('#grid'); let expanded = false;
-  const colCount = (g) => getComputedStyle(g).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
-  function applyRows() {
-    const cards = [...grid.children], limit = colCount(grid) * 2, collapse = !expanded && cards.length > limit;
-    cards.forEach((c, i) => c.classList.toggle('extra', collapse && i >= limit));
-    grid.querySelectorAll('.tile.more').forEach(t => { t.classList.remove('more'); t.querySelector('.more-layer')?.remove(); t.setAttribute('aria-label', t.dataset.label); });
-    if (collapse) {
-      const t = cards[limit - 1].querySelector('.tile'), rest = cards.length - limit + 1;
-      t.classList.add('more'); t.setAttribute('aria-label', `View more artworks (${rest} more)`);
-      t.insertAdjacentHTML('beforeend', `<span class="more-layer" aria-hidden="true"><b>View more</b><small>+${rest}</small></span>`);
+  // ---------- portfolio: a horizontal band of "bricks" that keep each image's natural shape ----------
+  // Two lanes (rows) of equal height; every piece keeps its own aspect ratio, so its width follows from its shape.
+  // Each piece goes into whichever lane is shorter (like masonry turned sideways). The first piece, and any piece
+  // marked "featured" in the CMS, is a big tile spanning both lanes; before placing one, the next small pieces may be
+  // pulled forward to even the lanes out, and any small leftover is spread as extra spacing so there are no holes.
+  const pf = (() => {
+    const scroller = $('#pfScroll'), track = $('#pfTrack'), wrapEl = $('#pfWrap'), hint = $('#pfHint');
+    let laid = false, lastH = 0, lastW = 0;
+    const aspectOf = (a) => { const z = sizeOf(a.image); return a.aspect || (z && z[0] && z[1] ? z[0] / z[1] : 0.75); };
+    const html = (a, i) => {
+      const label = a.title || a.caption || `Artwork ${i + 1}`;
+      return `<div class="brick" data-i="${i}" style="--d:${Math.min(i, 10) * 0.06}s"><button class="tile" type="button" data-i="${i}" aria-label="Open ${esc(label)}">
+        <img src="${esc(thumb(a.image))}" alt="${esc(label)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" draggable="false">
+        ${a.title ? `<span class="cap">${esc(a.title)}</span>` : ''}</button>
+        <div class="meta"><button class="like" type="button" data-art="${esc(a.id)}" aria-pressed="false" aria-label="Like"><svg aria-hidden="true"><use href="#i-heart"/></svg><span class="n" hidden></span></button>
+        <span class="views" data-art="${esc(a.id)}" aria-label="Views" hidden><svg aria-hidden="true"><use href="#i-eye"/></svg><span class="n" hidden></span></span></div></div>`;
+    };
+    function pack() {
+      const H = track.clientHeight; if (!H || !art.length) return;
+      const gap = innerWidth < 720 ? 8 : 12, h = (H - gap) / 2, lanes = [0, 0], rects = [], laneTiles = [[], []];
+      const big = (i) => i === 0 || art[i].featured === true;
+      const order = art.map((_, i) => i), used = new Set();
+      const putSmall = (i) => {
+        const w = Math.max(40, h * aspectOf(art[i])), l = lanes[0] <= lanes[1] ? 0 : 1;
+        rects[i] = { x: lanes[l], y: l * (h + gap), w, h }; laneTiles[l].push(i); lanes[l] += w + gap; used.add(i);
+      };
+      for (let k = 0; k < order.length; k++) {
+        const i = order[k]; if (used.has(i)) continue;
+        if (!big(i)) { putSmall(i); continue; }
+        // even the lanes out with up to 3 of the following small pieces, but only while that actually helps
+        for (let look = k + 1, n = 0; look < order.length && n < 3; look++) {
+          const j = order[look]; if (used.has(j) || big(j)) break;
+          const d = Math.abs(lanes[0] - lanes[1]), w = h * aspectOf(art[j]) + gap;
+          if (d < h * 0.12 || Math.abs(d - w) >= d) break;
+          putSmall(j); n++;
+        }
+        // spread what is left over the shorter lane's pieces since the last big tile, so it ends flush
+        const short = lanes[0] < lanes[1] ? 0 : 1, d = Math.abs(lanes[0] - lanes[1]), ts = laneTiles[short];
+        if (d > 0.5 && ts.length) ts.forEach((t, n) => { rects[t].x += d * (n + 1) / ts.length; });
+        const x = Math.max(lanes[0], lanes[1]), w = H * aspectOf(art[i]);
+        rects[i] = { x, y: 0, w, h: H }; lanes[0] = lanes[1] = x + w + gap; laneTiles[0] = []; laneTiles[1] = []; used.add(i);
+      }
+      track.style.width = Math.max(lanes[0], lanes[1]) - gap + 'px';
+      track.querySelectorAll('.brick').forEach(b => { const r = rects[+b.dataset.i]; if (!r) return;
+        b.style.left = r.x + 'px'; b.style.top = r.y + 'px'; b.style.width = r.w + 'px'; b.style.height = r.h + 'px';
+        b.classList.toggle('big', r.h === H); });
+      lastH = H; lastW = innerWidth; laid = true; sync();
     }
-    $('#gridMore').hidden = !(expanded && cards.length > limit);
-  }
-  function animateHeight(el, from, to, ms) {
-    if (reduce || Math.abs(from - to) < 2) return Promise.resolve();
-    el.style.overflow = 'hidden';
-    const a = el.animate([{ height: from + 'px' }, { height: to + 'px' }], { duration: ms, easing: 'cubic-bezier(.25,.8,.25,1)' });
-    return a.finished.catch(() => { }).then(() => { el.style.overflow = ''; });
-  }
-  function expand() {
-    const h0 = grid.offsetHeight; expanded = true; applyRows();
-    grid.querySelectorAll('.card').forEach((c, i) => { if (!c.classList.contains('in')) c.style.setProperty('--d', ((i % 8) * 0.05) + 's'); });
-    animateHeight(grid, h0, grid.offsetHeight, 650);
-  }
-  async function collapse() {
-    const h1 = grid.offsetHeight; expanded = false; applyRows(); const h0 = grid.offsetHeight; expanded = true; applyRows();
-    $('#gridMore').hidden = true;
-    const top = $('#gallery').getBoundingClientRect().top + scrollY - parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop || 0);
-    if (scrollY > top + h0 - innerHeight * 0.5) scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
-    await animateHeight(grid, h1, h0, 560); expanded = false; applyRows();
-    grid.querySelector('.tile.more')?.focus({ preventScroll: true });
-  }
-  $('#lessBtn').addEventListener('click', collapse);
-  let rowT = 0; addEventListener('resize', () => { clearTimeout(rowT); rowT = setTimeout(applyRows, 80); });
-  function renderGrid() {
-    renderCards(grid, art);
-    grid.querySelectorAll('.tile').forEach(t => t.dataset.label = t.getAttribute('aria-label'));
-    applyRows();
-    $('#empty').hidden = art.length > 0;
-  }
-  grid.addEventListener('click', e => {
-    const t = e.target.closest('.tile'); if (t) return t.classList.contains('more') ? expand() : open(+t.dataset.i, galleryCtx());
-    const b = e.target.closest('.like'); if (b) like(b.dataset.art, b);
-  });
-  const galleryCtx = () => ({ list: art, grid, tint: null });
+    function render() {
+      track.innerHTML = art.map(html).join('');
+      $('#empty').hidden = art.length > 0; wrapEl.hidden = !art.length; $('.pf-nav').hidden = !art.length;
+      track.querySelectorAll('.tile img').forEach((im, i) => {
+        const ok = () => {
+          im.classList.add('ok');
+          if (im.naturalWidth && !sizeOf(art[i].image)) {        // size not in the manifest (e.g. local preview): measure and re-pack once
+            const a = im.naturalWidth / im.naturalHeight; if (Math.abs(a - aspectOf(art[i])) > 0.01) { art[i].aspect = a; schedule(); }
+          }
+        };
+        im.complete && im.naturalWidth ? ok() : im.addEventListener('load', ok, { once: true }); im.addEventListener('error', () => im.classList.add('ok'), { once: true });
+      });
+      track.querySelectorAll('.like').forEach(b => { paint(b.dataset.art); cio ? cio.observe(b) : loadCount(b.dataset.art); });
+      pack();
+    }
+    let packT = 0; const schedule = () => { cancelAnimationFrame(packT); packT = requestAnimationFrame(pack); };
+    addEventListener('resize', () => { if (track.clientHeight !== lastH || innerWidth !== lastW) schedule(); });
+
+    // edge fades, arrows and the "swipe" hint follow the scroll position
+    function sync() {
+      const max = scroller.scrollWidth - scroller.clientWidth, x = scroller.scrollLeft;
+      scroller.classList.toggle('at-start', x < 4); scroller.classList.toggle('at-end', x > max - 4);
+      scroller.classList.toggle('no-scroll', max < 4);
+      $('#pfPrev').disabled = x < 4; $('#pfNext').disabled = x > max - 4;
+      if (x > 30) hint.classList.add('gone');
+    }
+    scroller.addEventListener('scroll', () => { sync(); if (!anim) target = scroller.scrollLeft; }, { passive: true });
+
+    // mouse wheel / trackpad: vertical wheel scrolls the band sideways (smoothly) until it reaches an end, then the page scrolls on
+    let target = 0, anim = 0;
+    const step = () => {
+      const x = scroller.scrollLeft, d = target - x;
+      if (Math.abs(d) < 0.6) { scroller.scrollLeft = target; anim = 0; return; }
+      scroller.scrollLeft = x + d * 0.2; anim = requestAnimationFrame(step);
+    };
+    scroller.addEventListener('wheel', e => {
+      if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;                 // real horizontal swipes and pinch stay native
+      const max = scroller.scrollWidth - scroller.clientWidth; if (max < 4) return;
+      const dy = e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? scroller.clientWidth : 1);
+      const base = anim ? target : scroller.scrollLeft;
+      if ((dy > 0 && base >= max - 1) || (dy < 0 && base <= 1)) return;                  // at the end: let the page scroll
+      e.preventDefault(); target = Math.max(0, Math.min(max, base + dy));
+      if (reduce) { scroller.scrollLeft = target; return; }
+      if (!anim) anim = requestAnimationFrame(step);
+    }, { passive: false });
+    const by = (dir) => { cancelAnimationFrame(anim); anim = 0; scroller.scrollBy({ left: dir * scroller.clientWidth * 0.8, behavior: reduce ? 'auto' : 'smooth' }); };
+    $('#pfPrev').addEventListener('click', () => by(-1)); $('#pfNext').addEventListener('click', () => by(1));
+    scroller.addEventListener('keydown', e => { if (e.target !== scroller) return; if (e.key === 'ArrowRight') { e.preventDefault(); by(1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); by(-1); } });
+
+    // mouse drag-to-scroll with a little momentum (touch uses the browser's own swipe + momentum)
+    let drag = null, dragged = false;
+    scroller.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('.like')) return;
+      cancelAnimationFrame(anim); anim = 0; drag = { x: e.clientX, s: scroller.scrollLeft, t: performance.now(), v: 0, lx: e.clientX, lt: performance.now() }; dragged = false;
+    });
+    addEventListener('pointermove', e => {
+      if (!drag) return; const dx = e.clientX - drag.x;
+      if (!dragged && Math.abs(dx) > 6) { dragged = true; scroller.classList.add('dragging'); }
+      if (dragged) { scroller.scrollLeft = drag.s - dx; const t = performance.now(); if (t > drag.lt) { drag.v = (e.clientX - drag.lx) / (t - drag.lt); drag.lx = e.clientX; drag.lt = t; } }
+    });
+    addEventListener('pointerup', () => {
+      if (!drag) return; const v = drag.v; drag = null; scroller.classList.remove('dragging');
+      if (dragged && !reduce && Math.abs(v) > 0.2) { const max = scroller.scrollWidth - scroller.clientWidth; target = Math.max(0, Math.min(max, scroller.scrollLeft - v * 320)); if (!anim) anim = requestAnimationFrame(step); }
+    });
+    // a drag must not also count as a click on the artwork underneath
+    scroller.addEventListener('click', e => { if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; } }, true);
+
+    track.addEventListener('click', e => {
+      const t = e.target.closest('.tile'); if (t) return open(+t.dataset.i, { list: art, grid: track, tint: null });
+      const b = e.target.closest('.like'); if (b) like(b.dataset.art, b);
+    });
+    // entrance: the bricks rise in one after another when the band first scrolls into view
+    if (!reduce && 'IntersectionObserver' in window) {
+      const eio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { track.classList.add('in'); eio.disconnect(); } }), { threshold: 0.15 });
+      eio.observe(track);
+    } else track.classList.add('in');
+    return { render, pack, sync };
+  })();
 
   // ---------- albums ----------
   const albumGrid = $('#albumGrid'), av = $('#av'), avGrid = $('#avGrid'), avCover = $('#avCover');
@@ -351,7 +442,7 @@
   const lb = $('#lb'), stage = $('#lbStage'), track = $('#lbTrack'), textEl = $('#lbText'), tintEl = $('#lbTint'), glowEl = $('#lbGlow');
   const EASE = 'cubic-bezier(.22,.8,.24,1)', GAP = 28;
   let idx = 0, panelI = -1, lastFocus = null, W = 0, offset = 0, pendingK = 0, animTimer = 0, closing = false, flyer = null;
-  let ctx = { list: [], grid: null, tint: null };      // what the viewer is showing: the gallery, or one album (tint = album cover colour)
+  let ctx = { list: [], grid: null, tint: null };      // what the viewer is showing: the portfolio, or one album (tint = album cover colour)
   const L = () => ctx.list;
   const N = () => L().length, wrap = (i) => ((i % N()) + N()) % N();
   const tileImg = (i) => ctx.grid?.querySelector(`.tile[data-i="${i}"] img`);
@@ -562,7 +653,11 @@
   lb.addEventListener('dblclick', e => e.preventDefault());
 
   // ----- open / close with a shared-element "flight" between the thumbnail and the viewer -----
-  function onScreen(el) { if (!el) return null; const r = el.getBoundingClientRect(); return r.width && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth ? r : null; }
+  function onScreen(el) {
+    if (!el) return null; const r = el.getBoundingClientRect(), sc = el.closest('.pf-scroll')?.getBoundingClientRect();
+    if (sc && (r.right < sc.left + 20 || r.left > sc.right - 20)) return null;          // hidden sideways inside the portfolio band
+    return r.width && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth ? r : null;
+  }
   function fly(from, to, src, r0, r1, ms, host = lb) {
     flyer?.remove(); const g = flyer = document.createElement('div'); g.className = 'lb-flyer'; g.innerHTML = `<img alt="" src="${esc(src)}">`; host.appendChild(g);
     const k = (r, rad) => ({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: rad + 'px' });
@@ -587,8 +682,12 @@
     if (lb.hidden || closing) return; closing = true;
     if (animTimer) commit(); if (offset) setOffset(0);
     const im = curImg(); resetZoom(im);
-    const card = ctx.grid?.querySelector(`.tile[data-i="${idx}"]`)?.closest('.card');
-    if (card && card.offsetParent) { card.classList.add('in', 'done'); if (!onScreen(card.querySelector('img'))) card.scrollIntoView({ block: 'center', behavior: 'instant' }); }
+    const card = ctx.grid?.querySelector(`.tile[data-i="${idx}"]`)?.closest('.card, .brick');
+    if (card && card.offsetParent) {
+      card.classList.add('in', 'done');
+      if (card.classList.contains('brick')) { const sc = card.closest('.pf-scroll'); const r = card.getBoundingClientRect(), R = sc.getBoundingClientRect(); if (r.left < R.left || r.right > R.right) { sc.scrollLeft = Math.max(0, card.offsetLeft - (sc.clientWidth - card.offsetWidth) / 2); pf.sync(); } }
+      if (!onScreen(card.querySelector('img'))) card.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+    }
     const thumb = tileImg(idx), r1 = !reduce && onScreen(thumb), r0 = im.getBoundingClientRect();
     lb.classList.remove('open');
     if (r1 && r0.width) {
@@ -616,14 +715,91 @@
     else if (e.key === '-' || e.key === '0') resetZoom(curImg(), 200);
   });
 
-  Promise.all([json('content/site.json').catch(() => ({})), json('content/gallery.json').catch(() => ({ artworks: [] })),
-    json('content/albums.json').catch(() => ({ albums: [] })), json('content/thumbs.json').catch(() => ({}))]).then(([s, g, A, T]) => {
-    thumbs = T && typeof T === 'object' ? T : {};
+  const portfolioJson = () => json('content/portfolio.json').catch(() => ({ artworks: [] }));
+  Promise.all([json('content/site.json').catch(() => ({})), portfolioJson(),
+    json('content/albums.json').catch(() => ({ albums: [] })), json('content/thumbs.json').catch(() => ({})),
+    json('content/commissions.json').catch(() => ({ tiers: [] }))]).then(([s, g, A, T, C]) => {
+    T = T && typeof T === 'object' ? T : {};
+    if (T.thumbs || T.sizes) { thumbs = T.thumbs || {}; sizes = T.sizes || {}; } else thumbs = T;     // old manifest = plain { path: thumb }
     const pieces = (list) => (list || []).filter(a => a && a.image).map(a => ({ ...a, id: artId(a.image) }));
     art = pieces(g.artworks);
     albums = (A.albums || []).filter(a => a && (a.name || a.cover)).map(a => ({ ...a, name: a.name || 'Untitled album', items: pieces(a.artworks) }));
-    renderSite(s); renderGrid(); renderAlbums();
+    tiers = (C.tiers || []).filter(t => t && (t.name || t.image));
+    renderSite(s); pf.render(); renderAlbums(); tierShow.render(tiers);
     sound.setBg(s.music ? asset(s.music) : '');
     const ids = new Set([...art, ...albums.flatMap(a => a.items)].map(a => a.id)); pending().filter(id => ids.has(id)).forEach(send);   // likes that couldn't be sent last time
   });
+
+  // ---------- commissions: auto-advancing slideshow of tiers ----------
+  // Every 5 s the next tier comes in: the example image glides in from the right out of a soft blur while the old one
+  // drifts left and fades, the tier name rises in letter by letter, then the description, and the price box draws its outline.
+  // Pauses on hover, focus or touch; dots, arrows, swipe and ← → work; with reduced motion it never auto-advances.
+  const tierShow = (() => {
+    const box = $('#tiers'), stage = $('#tiersStage'), dots = $('#tDots'), DUR = 5000;
+    let list = [], cur = 0, elapsed = 0, last = 0, raf = 0, hover = false, focus = false, touchHold = 0, hidden = document.hidden;
+    const letters = (t) => String(t || '').split(/(\s+)/).map(w => /^\s+$/.test(w) ? ' ' :
+      `<span class="w">${[...w].map(c => `<span class="ch">${esc(c)}</span>`).join('')}</span>`).join('');
+    function render(t) {
+      list = t; box.hidden = !list.length; $('#commWhat').hidden = !list.length;
+      stage.innerHTML = list.map((t, k) => `<article class="tier" data-k="${k}" role="group" aria-roledescription="slide" aria-label="${k + 1} of ${list.length}: ${esc(t.name || '')}" aria-hidden="true">
+        <div class="tier-media">${t.image ? `<img src="${esc(thumb(t.image))}" alt="${esc(t.name ? 'Example: ' + t.name : 'Example artwork')}" decoding="async" loading="${k ? 'lazy' : 'eager'}" draggable="false">` : ''}</div>
+        <div class="tier-text">
+          <h3 class="tier-name">${letters(t.name)}</h3>
+          ${t.description ? `<p class="tier-desc">${esc(t.description)}</p>` : ''}
+          ${t.price ? `<div class="tier-price"><svg aria-hidden="true"><rect rx="14" ry="14" pathLength="1"/></svg><span>${esc(t.price)}</span></div>` : ''}
+          ${t.notes ? `<p class="tier-notes">${esc(t.notes)}</p>` : ''}
+        </div></article>`).join('');
+      stage.querySelectorAll('.tier-name').forEach(h => h.querySelectorAll('.ch').forEach((c, i) => c.style.setProperty('--i', i)));
+      dots.innerHTML = list.length > 1 ? list.map((t, k) => `<button type="button" class="t-dot" data-k="${k}" aria-label="Show ${esc(t.name || 'tier ' + (k + 1))}"><i></i></button>`).join('') : '';
+      $('#tiersCtrl').hidden = list.length < 2;
+      cur = 0; show(0, 0, true); sizeRects();
+      if (!raf) { last = performance.now(); raf = requestAnimationFrame(tick); }
+    }
+    function sizeRects() {     // the price outline is an SVG rect sized to its box, so it can "draw" itself in
+      stage.querySelectorAll('.tier-price').forEach(p => { const r = p.querySelector('rect'), w = p.offsetWidth, h = p.offsetHeight; if (!w) return;
+        r.setAttribute('x', 1.5); r.setAttribute('y', 1.5); r.setAttribute('width', Math.max(0, w - 3)); r.setAttribute('height', Math.max(0, h - 3)); });
+    }
+    addEventListener('resize', sizeRects); document.fonts?.ready.then(sizeRects);
+    function show(k, dir = 1, first = false) {
+      if (!list.length) return; k = ((k % list.length) + list.length) % list.length;
+      const els = [...stage.children], prev = els[cur], next = els[k];
+      if (!first && k === cur) return;
+      els.forEach(e => e.classList.remove('leave', 'back'));
+      if (prev && prev !== next) { prev.classList.remove('on'); prev.classList.add('leave'); prev.classList.toggle('back', dir < 0); prev.setAttribute('aria-hidden', 'true'); }
+      next.classList.toggle('back', dir < 0); void next.offsetWidth; next.classList.add('on'); next.setAttribute('aria-hidden', 'false');
+      cur = k; elapsed = 0;
+      dots.querySelectorAll('.t-dot').forEach((d, i) => { d.classList.toggle('on', i === k); d.setAttribute('aria-current', i === k ? 'true' : 'false'); d.style.setProperty('--p', 0); });
+      sizeRects();
+    }
+    const paused = () => reduce || hover || focus || touchHold || hidden || list.length < 2;
+    function tick(t) {
+      const dt = Math.min(100, t - last); last = t;
+      if (!paused() && onScreen(stage)) {
+        elapsed += dt;
+        dots.querySelector('.t-dot.on')?.style.setProperty('--p', Math.min(1, elapsed / DUR).toFixed(3));
+        if (elapsed >= DUR) show(cur + 1, 1);
+      }
+      box.classList.toggle('paused', paused());
+      raf = requestAnimationFrame(tick);
+    }
+    const go = (d) => show(cur + d, d);
+    $('#tPrev').addEventListener('click', () => go(-1)); $('#tNext').addEventListener('click', () => go(1));
+    dots.addEventListener('click', e => { const d = e.target.closest('.t-dot'); if (d) { const k = +d.dataset.k; show(k, k < cur ? -1 : 1); } });
+    box.addEventListener('mouseenter', () => hover = true); box.addEventListener('mouseleave', () => hover = false);
+    box.addEventListener('focusin', () => focus = true); box.addEventListener('focusout', e => { if (!box.contains(e.relatedTarget)) focus = false; });
+    box.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { e.preventDefault(); go(1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); } });
+    document.addEventListener('visibilitychange', () => { hidden = document.hidden; });
+    // touch: hold to pause; a sideways swipe changes tier; it resumes 2.5 s after the finger lifts
+    let sx = null, sy = 0;
+    stage.addEventListener('touchstart', e => { clearTimeout(touchHold); touchHold = -1; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+    stage.addEventListener('touchend', e => {
+      const t = e.changedTouches[0]; if (sx != null) { const dx = t.clientX - sx, dy = t.clientY - sy; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3) go(dx < 0 ? 1 : -1); }
+      sx = null; touchHold = setTimeout(() => { touchHold = 0; }, 2500);
+    }, { passive: true });
+    // mouse / pen swipe too
+    let px = null;
+    stage.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') px = e.clientX; });
+    stage.addEventListener('pointerup', e => { if (px != null && Math.abs(e.clientX - px) > 60) go(e.clientX < px ? 1 : -1); px = null; });
+    return { render, show, get cur() { return cur; } };
+  })();
 })();
