@@ -1,12 +1,5 @@
 {
-  "siteName": "yazarts",
-  "heroImage": "/images/site/hero-cutout.png",
-  "heroImageAlt": "Character art by @yazarts",
-  "heroTitle": "Welcome!",
-  "heroSubtitle": "To my portfolio",
-  "heroIntro": "Digital art and illustrations by @yazarts",
-  "about": "Hi, I'm Yaz, a digital artist sharing my favourite pieces here.",
-  "commissionsOpen": false,
+  "commissionsOpen": true,
   "commissionText": "Commissions are open! Message me on Instagram, tiktok or Reddit with your idea and I'll get back to you. You can also support my work on Ko-fi.",
   "commissionClosedText": "Commissions are closed for now. Follow me on Instagram or TikTok to hear when they reopen, or support my work on Ko-fi.",
   "links": [
@@ -27,5 +20,10 @@
       "url": "https://ko-fi.com/yazarts"
     }
   ],
+  "about": "Hi, I'm Yaz, a digital artist sharing my favourite pieces here.",
+  "heroImage": "/images/site/hero-cutout.png",
+  "heroTitle": "Welcome!",
+  "heroSubtitle": "To my portfolio",
+  "siteName": "yazarts",
   "music": "/audio/AUDIO-2026-11-02-02-53-02.mp3"
 }
