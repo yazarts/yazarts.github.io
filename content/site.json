@@ -1,12 +1,6 @@
 {
-  "siteName": "yazartsgallery",
-  "heroTitle": "yazarts",
-  "heroSubtitle": "gallery",
-  "tagline": "Digital art by @yazarts",
-  "heroImage": "/images/site/banner-placeholder.svg",
-  "about": "Hi, I'm Yaz, a digital artist sharing my favourite pieces here.",
   "commissionsOpen": true,
-  "commissionText": "Commissions are open! Message me on Instagram or TikTok with your idea and I'll get back to you. You can also support my work on Ko-fi.",
+  "commissionText": "Commissions are open! Message me on Instagram, tiktok or Reddit with your idea and I'll get back to you. You can also support my work on Ko-fi.",
   "commissionClosedText": "Commissions are closed for now. Follow me on Instagram or TikTok to hear when they reopen, or support my work on Ko-fi.",
   "links": [
     {
@@ -25,5 +19,11 @@
       "label": "Ko-fi",
       "url": "https://ko-fi.com/yazarts"
     }
-  ]
+  ],
+  "about": "Hi, I'm Yaz, a digital artist sharing my favourite pieces here.",
+  "tagline": "Digital art and illustrations by @yazarts",
+  "heroImage": "/images/site/banner-placeholder.svg",
+  "heroTitle": "yazarts",
+  "heroSubtitle": "gallery",
+  "siteName": "yazarts gallery"
 }
