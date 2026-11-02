@@ -15,7 +15,7 @@ async function ctx(b, w, h, mob) {
   await c.route('https://abacus.jasoncameron.dev/**', r => { hits.push(r.request().url()); r.fulfill({ headers: { 'access-control-allow-origin': '*' }, contentType: 'application/json', body: '{"value":7}' }); });
   const p = await c.newPage(); const errs = [];
   p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
-  p.on('requestfailed', r => !/abacus|fonts\./.test(r.url()) && errs.push('request failed ' + r.url()));
+  p.on('requestfailed', r => { const t = r.failure()?.errorText || ''; if (/abacus|fonts\./.test(r.url()) || (/ERR_ABORTED/.test(t) && /\.(mp3|m4a|ogg|wav)$/.test(r.url()))) return; errs.push('request failed ' + r.url() + ' ' + t); });   // aborted audio = streaming stopped on purpose
   return { c, p, errs, hits };
 }
 const go = (p, sel) => p.evaluate(s => document.querySelector(s).scrollIntoView({ behavior: 'instant', block: 'start' }), sel);
