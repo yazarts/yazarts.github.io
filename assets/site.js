@@ -5,11 +5,15 @@
   // CMS stores paths like "/images/x.jpg"; make them relative so the site works at the domain root (yazarts.github.io) AND under any sub-path
   const asset = (p) => !p ? '' : /^(https?:)?\/\//.test(p) ? p : String(p).replace(/^\/+/, '');
   const json = (u) => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(u); return r.json(); });
-  let art = [], albums = [], tiers = [], thumbs = {}, sizes = {};
-  // grid thumbnails + image sizes are generated at deploy time (content/thumbs.json); the viewer always loads the untouched original
+  const store = {
+    get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } },
+  };
+  let art = [], tiers = [], thumbs = {}, sizes = {};
+  // grid previews + image sizes are generated at deploy time (content/thumbs.json); the viewer always loads the untouched original
   const clean = (p) => asset(p).split(/[?#]/)[0];
   const thumb = (p) => thumbs[clean(p)] || asset(p);
-  const sizeOf = (p) => sizes[clean(p)] || null;          // [w, h] or null (then read from the image when it loads)
+  const sizeOf = (p) => sizes[clean(p)] || null;          // [w, h] or null
 
   $('#yr').textContent = new Date().getFullYear();
   requestAnimationFrame(() => document.body.classList.add('loaded'));
@@ -21,13 +25,116 @@
   $('#menuBtn').addEventListener('click', () => { const o = nav.classList.toggle('menu-open'); $('#menuBtn').setAttribute('aria-expanded', o); });
   document.querySelectorAll('#menu a').forEach(a => a.addEventListener('click', () => { nav.classList.remove('menu-open'); $('#menuBtn').setAttribute('aria-expanded', false); }));
   const secIO = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) document.querySelectorAll('#menu a').forEach(a => a.classList.toggle('active', a.dataset.nav === e.target.id)); }), { rootMargin: '-45% 0px -50% 0px' });
-  ['home', 'portfolio', 'albums', 'commissions', 'about', 'connect'].forEach(id => secIO.observe(document.getElementById(id)));
+  ['home', 'portfolio', 'commissions', 'contact'].forEach(id => secIO.observe(document.getElementById(id)));
 
   // gentle fade-in on scroll
   const io = !reduce && 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -6% 0px', threshold: .05 }) : null;
   const observe = (el) => io ? io.observe(el) : el.classList.add('in');
   document.querySelectorAll('.fade').forEach(observe);
 
+  // page scroll lock shared by the "See more" panel and the viewer
+  let locks = 0;
+  function lockScroll(d) {
+    const was = locks; locks = Math.max(0, locks + d);
+    if (!was && locks) { const sb = innerWidth - document.documentElement.clientWidth; document.body.style.overflow = 'hidden'; if (sb > 0) document.body.style.paddingRight = sb + 'px'; }
+    if (was && !locks) { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }
+  }
+
+  // ---------- welcome section ----------
+  const hero = $('#home'), heroImg = $('#heroImg'), heroBg = $('#heroBg');
+  function renderWelcome(w) {
+    if (w.heroTitle != null) $('#heroTitle').textContent = w.heroTitle;
+    if (w.heroIntro != null) $('#heroIntro').textContent = w.heroIntro;
+    // floating cut-out (left)
+    if (w.heroImage) { const src = asset(w.heroImage); if (heroImg.getAttribute('src') !== src) heroImg.src = src; }
+    heroImg.alt = w.heroImageAlt || 'Character art by @yazarts';
+    hero.classList.toggle('no-img', w.heroImage === '' || w.heroImage === null);
+    // full-cover background illustration; without one the calm navy "space" background shows
+    const bg = w.heroBackground;
+    if (bg) {
+      const orig = asset(bg), t = thumb(bg), z = sizeOf(bg);
+      // a 1200 px preview for small screens, the original for big / high-density ones (the browser picks)
+      if (t !== orig && z) { const tw = z[0] >= z[1] ? 1200 : Math.round(1200 * z[0] / z[1]); heroBg.srcset = `${t} ${tw}w, ${orig} ${z[0]}w`; heroBg.sizes = '100vw'; }
+      heroBg.src = orig;
+      const ok = () => hero.classList.add('bg-ok');
+      heroBg.complete && heroBg.naturalWidth ? ok() : heroBg.addEventListener('load', ok, { once: true });
+      heroBg.addEventListener('error', () => hero.classList.add('no-bg'), { once: true });
+      hero.classList.remove('no-bg');
+    } else { heroBg.removeAttribute('src'); hero.classList.add('no-bg'); }
+    bio.set(w);
+  }
+  const heroOk = () => hero.classList.add('img-ok');
+  heroImg.complete && heroImg.naturalWidth ? heroOk() : heroImg.addEventListener('load', heroOk);
+  heroImg.addEventListener('error', () => hero.classList.add('no-img'));
+
+  // ---------- "See more": journal-style biography that types itself out like a streamed chat reply ----------
+  const bio = (() => {
+    const box = $('#bio'), textEl = $('#bioText'), full = $('#bioFull'), body = $('#bioBody'), skip = $('#bioSkip');
+    let paras = [], raf = 0, lastFocus = null, closing = false;
+    const caret = document.createElement('span'); caret.className = 'caret'; caret.setAttribute('aria-hidden', 'true');
+    function set(w) {
+      if (w.bioTitle) $('#bioTitle').textContent = w.bioTitle;
+      if (w.bioPhoto) $('#bioPhoto').src = asset(w.bioPhoto);
+      $('#bioPhoto').closest('figure').hidden = w.bioPhoto === '' || w.bioPhoto === null;
+      if (w.bio != null) paras = String(w.bio).split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+      full.innerHTML = paras.map(p => `<p>${esc(p)}</p>`).join('');
+    }
+    paras = [...full.querySelectorAll('p')].map(p => p.textContent);
+    function stop() { cancelAnimationFrame(raf); raf = 0; }
+    function finish() {
+      stop(); textEl.innerHTML = paras.map(p => `<p>${esc(p)}</p>`).join('');
+      textEl.lastElementChild?.appendChild(caret); box.classList.add('typed');
+    }
+    function type() {
+      stop(); textEl.innerHTML = ''; box.classList.remove('typed');
+      if (reduce || !paras.length) return finish();
+      // ~70 characters a second, with tiny pauses after punctuation, like a chat reply streaming in
+      let pi = 0, ci = 0, p = null, node = null, due = performance.now() + 380, last = due;
+      const CPS = 70;
+      const sc = getComputedStyle(body).overflowY === 'visible' ? body.closest('.bio-card') : body;     // phones: the whole card scrolls
+      const stick = () => sc.scrollHeight - sc.scrollTop - sc.clientHeight < 80;
+      const step = (now) => {
+        if (now < due) { raf = requestAnimationFrame(step); return; }
+        const follow = stick();
+        let budget = Math.max(1, Math.round((now - last) * CPS / 1000)); last = now;
+        while (budget-- > 0 && pi < paras.length) {
+          if (!p) { p = document.createElement('p'); node = document.createTextNode(''); p.append(node, caret); textEl.appendChild(p); }
+          const ch = paras[pi][ci++]; node.data += ch;
+          if (ci >= paras[pi].length) { pi++; ci = 0; p = null; due = now + 260; last = due; break; }
+          if (/[.!?]/.test(ch)) { due = now + 170; last = due; break; }
+          if (/[,;:]/.test(ch)) { due = now + 70; last = due; break; }
+        }
+        if (follow) sc.scrollTop = sc.scrollHeight;
+        if (pi >= paras.length) { finish(); return; }
+        raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    }
+    function open() {
+      if (!box.hidden) return; lastFocus = document.activeElement; closing = false;
+      box.hidden = false; lockScroll(1); body.scrollTop = 0; body.closest('.bio-card').scrollTop = 0;
+      requestAnimationFrame(() => box.classList.add('open'));
+      $('#bioClose').focus({ preventScroll: true }); type();
+    }
+    function close() {
+      if (box.hidden || closing) return; closing = true; stop();
+      box.classList.remove('open');
+      setTimeout(() => { box.hidden = true; lockScroll(-1); closing = false; lastFocus?.focus?.({ preventScroll: true }); }, reduce ? 0 : 380);
+    }
+    $('#bioBtn').addEventListener('click', open);
+    $('#bioClose').addEventListener('click', close);
+    $('#bioBg').addEventListener('click', close);
+    skip.addEventListener('click', finish);
+    textEl.addEventListener('click', () => raf && finish());          // tap the text to show it all at once
+    addEventListener('keydown', e => {
+      if (box.hidden) return;
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+      else if (e.key === 'Tab') { const f = [...box.querySelectorAll('button')].filter(x => x.offsetParent); const k = f.indexOf(document.activeElement); e.preventDefault(); f[(k + (e.shiftKey ? -1 : 1) + f.length) % f.length]?.focus(); }
+    });
+    return { set, open, close, finish };
+  })();
+
+  // ---------- contact: "Not quite what you're looking for?" reveals the social icons ----------
   const ICON = {
     instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg>',
     reddit: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.1a2.2 2.2 0 0 0-3.7-1.6 10.8 10.8 0 0 0-5.8-1.8l1-4.6 3.2.7a1.6 1.6 0 1 0 .2-1l-3.6-.8a.5.5 0 0 0-.6.4l-1.1 5.3a10.8 10.8 0 0 0-5.9 1.8A2.2 2.2 0 1 0 3.3 14a4.3 4.3 0 0 0 0 .7c0 3.4 3.9 6.1 8.7 6.1s8.7-2.7 8.7-6.1a4.3 4.3 0 0 0 0-.7 2.2 2.2 0 0 0 1.3-1.9ZM7.5 13.6a1.6 1.6 0 1 1 1.6 1.6 1.6 1.6 0 0 1-1.6-1.6Zm9 4.2a5.8 5.8 0 0 1-4.5 1.3 5.8 5.8 0 0 1-4.5-1.3.5.5 0 0 1 .7-.7 4.9 4.9 0 0 0 3.8 1 4.9 4.9 0 0 0 3.8-1 .5.5 0 0 1 .7.7Zm-.4-2.6a1.6 1.6 0 1 1 1.6-1.6 1.6 1.6 0 0 1-1.6 1.6Z"/></svg>',
@@ -46,220 +153,101 @@
   const handle = (url) => { try { const u = new URL(url); const p = u.pathname.split('/').filter(Boolean).pop(); return p ? (p.startsWith('@') ? p : '@' + p) : u.hostname.replace(/^www\./, ''); } catch { return ''; } };
 
 
-  function renderSite(s) {
-    if (s.siteName) { $('#brandName').textContent = s.siteName; $('#footName').textContent = s.siteName; }
-    if (s.heroTitle != null) $('#heroTitle').textContent = s.heroTitle;
-    if (s.heroSubtitle != null) $('#heroSubtitle').textContent = s.heroSubtitle;
-    const intro = s.heroIntro ?? s.tagline; if (intro != null) $('#heroIntro').textContent = intro;
-    $('#heroIntro').hidden = !$('#heroIntro').textContent.trim();
-    const hi = $('#heroImg');
-    if (s.heroImage) { const src = asset(s.heroImage); if (hi.getAttribute('src') !== src) hi.src = src; }
-    hi.alt = s.heroImageAlt || 'Artwork by @yazarts';
-    $('#home').classList.toggle('no-img', s.heroImage === '');
-    $('#aboutText').textContent = s.about || '';
-    $('#about').hidden = !s.about;
-    const open = s.commissionsOpen !== false;
-    $('#commKicker').classList.toggle('closed', !open);
-    $('#commKicker').textContent = open ? 'Open for commissions!' : 'Commissions closed for now';
-    $('#commText').textContent = (open ? s.commissionText : s.commissionClosedText) || '';
-    $('#commText').hidden = !$('#commText').textContent;
-    $('#links').innerHTML = (s.links || []).filter(l => l && l.url).map(l => `
-      <li><a href="${esc(l.url)}" target="_blank" rel="noopener me"><span class="ico">${iconFor(l.label || '', l.url)}</span>
-        <span><strong>${esc(l.label || handle(l.url))}</strong><small>${esc(handle(l.url))}</small></span>
-        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a></li>`).join('');
-  }
-  const heroImg = $('#heroImg'); const heroOk = () => $('#home').classList.add('img-ok');
-  heroImg.complete && heroImg.naturalWidth ? heroOk() : heroImg.addEventListener('load', heroOk);
-  heroImg.addEventListener('error', () => $('#home').classList.add('no-img'));
-
-  // ---------- likes ----------
-  // Free, no-signup counter API (Abacus). One counter per artwork: <namespace>/like-<image file name>.
-  // If the API is slow or down, the count is simply hidden; the heart still works and the like is sent later.
-  // NOTE: the namespace is the site's ORIGINAL id; keep it unchanged, or every existing like and view count resets to 0.
-  const LIKES = { api: 'https://abacus.jasoncameron.dev', ns: 'yazartsgallery' };
-  const store = {
-    get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } },
-  };
-  const artId = (image) => String(image || '').split('/').pop().replace(/\.[a-z0-9]+$/i, '').toLowerCase().normalize('NFKD')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 58) || 'art';
-  const likeKey = (id) => `like-${id}`;               // Abacus keys: ^[A-Za-z0-9_.-]{3,64}$
-  const liked = () => store.get('yaz.liked', {});      // { artId: 1 } — one like per browser
-  const pending = () => store.get('yaz.pendingLikes', []);
-  const fmt = (n) => n >= 10000 ? Math.round(n / 1000) + 'k' : n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
-  const counts = {};                                   // artId -> number (unknown = undefined)
-
-  // tiny request queue: stays well under Abacus' limit of 30 requests / 10 s per visitor
-  const q = []; let active = 0, stamps = [], pauseUntil = 0;
-  function pump() {
-    while (q.length && active < 4) {
-      const now = Date.now(); stamps = stamps.filter(t => now - t < 10000);
-      const wait = Math.max(pauseUntil - now, stamps.length >= 24 ? 10000 - (now - stamps[0]) + 50 : 0);
-      if (wait > 0) { setTimeout(pump, wait); return; }
-      const job = q.shift(); active++; stamps.push(now);
-      job().finally(() => { active--; pump(); });
+  const contact = (() => {
+    const btn = $('#contactBtn'), boxEl = $('#contactBox'), wrapEl = $('#contact');
+    function set(c) {
+      if (c.buttonLabel) $('#contactLabel').textContent = c.buttonLabel;
+      if (c.contactText != null) $('#contactText').textContent = c.contactText;
+      $('#socials').innerHTML = (c.links || []).filter(l => l && l.url).map(l => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener me" aria-label="${esc((l.label || handle(l.url)) + ' ' + handle(l.url))}" title="${esc(l.label || '')}">
+        <span class="ico">${iconFor(l.label || '', l.url)}</span><span class="s-name">${esc(l.label || handle(l.url))}</span></a></li>`).join('');
     }
-  }
-  const api = (path) => new Promise((resolve, reject) => {
-    q.push(async () => {
-      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
-      try {
-        const r = await fetch(`${LIKES.api}/${path}`, { signal: ctl.signal, cache: 'no-store' });
-        if (r.status === 404) return resolve(0);                    // (not expected: /info answers 200 for new keys)
-        if (r.status === 429) { pauseUntil = Date.now() + 10000; return reject(new Error('busy')); }
-        if (!r.ok) return reject(new Error('http ' + r.status));
-        const d = await r.json(); if (d.exists === false) return resolve(0);   // nobody has liked / viewed it yet
-        Number.isFinite(d.value) ? resolve(Math.max(0, d.value)) : reject(new Error('bad'));
-      } catch (e) { reject(e); } finally { clearTimeout(t); }
-    }); pump();
-  });
-  // "/info" answers 200 with {exists:false} for counters nobody has hit yet, so new pieces cause no 404s in the console
-  const getCount = (id) => api(`info/${LIKES.ns}/${likeKey(id)}`);
-  const hitCount = (id) => api(`hit/${LIKES.ns}/${likeKey(id)}`);
-  const viewKey = (id) => `view-${id}`;
-  const views = {};                                    // artId -> number of views
-  const getViews = (id) => api(`info/${LIKES.ns}/${viewKey(id)}`);
-  const hitViews = (id) => api(`hit/${LIKES.ns}/${viewKey(id)}`);
-
-  function paint(id) {
-    const on = !!liked()[id], n = counts[id], v = views[id];
-    document.querySelectorAll(`.like[data-art="${id}"]`).forEach(b => {
-      b.setAttribute('aria-pressed', on);
-      b.setAttribute('aria-label', (on ? 'Liked' : 'Like') + (n != null ? ` (${n} like${n === 1 ? '' : 's'})` : ''));
-      const c = b.querySelector('.n'); c.hidden = n == null; c.textContent = n != null ? fmt(n) : '';
-    });
-    document.querySelectorAll(`.views[data-art="${id}"]`).forEach(b => {
-      b.hidden = v == null; b.setAttribute('aria-label', v != null ? `${v} view${v === 1 ? '' : 's'}` : 'Views');
-      const c = b.querySelector('.n'); c.hidden = v == null; c.textContent = v != null ? fmt(v) : '';
-    });
-  }
-  const requested = new Set(), requestedV = new Set();
-  function loadCount(id) {
-    if (!requested.has(id)) {
-      requested.add(id);
-      getCount(id).then(v => { counts[id] = Math.max(v, counts[id] || 0); paint(id); })
-        .catch(() => { requested.delete(id); paint(id); });          // count stays hidden; retried next time it scrolls into view
+    function toggle(force) {
+      const o = force ?? !wrapEl.classList.contains('open');
+      wrapEl.classList.toggle('open', o); btn.setAttribute('aria-expanded', o);
     }
-    if (!requestedV.has(id) && !seenNow.has(id)) {
-      requestedV.add(id);
-      getViews(id).then(v => { views[id] = Math.max(v, views[id] || 0); paint(id); }).catch(() => { requestedV.delete(id); });
-    }
-  }
-  // a view = the piece was opened in the viewer; counted once per piece per browser session
-  const seenNow = new Set();
-  function countView(id) {
-    let seen; try { seen = JSON.parse(sessionStorage.getItem('yaz.viewed')) || {}; } catch { seen = {}; }
-    if (seen[id] || seenNow.has(id)) return; seenNow.add(id);
-    seen[id] = 1; try { sessionStorage.setItem('yaz.viewed', JSON.stringify(seen)); } catch { }
-    if (views[id] != null) { views[id]++; paint(id); }
-    hitViews(id).then(v => { views[id] = v; paint(id); }).catch(() => { });
-  }
-  const pop = (b) => { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); };
-  function like(id, btn) {
-    pop(btn); const L = liked(); if (L[id]) return;      // already liked from this browser
-    L[id] = 1; store.set('yaz.liked', L);
-    if (counts[id] != null) counts[id]++; paint(id);
-    send(id);
-  }
-  function send(id) {
-    hitCount(id).then(v => { counts[id] = v; store.set('yaz.pendingLikes', pending().filter(x => x !== id)); paint(id); })
-      .catch(() => { const p = pending(); if (!p.includes(id)) store.set('yaz.pendingLikes', [...p, id]); });   // try again on the next visit
-  }
+    btn.addEventListener('click', () => toggle());
+    // the nav's "Contact" link (or a #contact link) opens the icons too
+    const fromHash = () => { if (location.hash === '#contact') toggle(true); };
+    addEventListener('hashchange', fromHash); fromHash();
+    document.querySelectorAll('a[href="#contact"]').forEach(a => a.addEventListener('click', () => toggle(true)));
+    return { set, toggle };
+  })();
 
-  // ---------- artwork cards (inside albums) ----------
-  const cio = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) loadCount(e.target.dataset.art); }), { rootMargin: '400px 0px' }) : null;
-  const cardHTML = (a, i) => {
-    const label = a.title || a.caption || `Artwork ${i + 1}`;
-    return `<div class="card fade" style="--d:${(i % 4) * 0.07}s"><button class="tile" data-i="${i}" aria-label="Open ${esc(label)}">
-      <img src="${esc(thumb(a.image))}" alt="${esc(label)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async">
-      ${a.title ? `<span class="cap">${esc(a.title)}</span>` : ''}</button>
-      <div class="meta"><button class="like" type="button" data-art="${esc(a.id)}" aria-pressed="false" aria-label="Like"><svg aria-hidden="true"><use href="#i-heart"/></svg><span class="n" hidden></span></button>
-      <span class="views" data-art="${esc(a.id)}" aria-label="Views" hidden><svg aria-hidden="true"><use href="#i-eye"/></svg><span class="n" hidden></span></span></div></div>`;
-  };
-  function renderCards(grid, list) {
-    grid.innerHTML = list.map(cardHTML).join('');
-    grid.querySelectorAll('.card').forEach(t => { observe(t); t.addEventListener('transitionend', () => t.classList.add('done'), { once: true }); });
-    grid.querySelectorAll('.tile img').forEach((im, i) => { const ok = () => { im.classList.add('ok'); if (im.naturalWidth && !list[i].aspect) list[i].aspect = im.naturalWidth / im.naturalHeight; }; im.complete && im.naturalWidth ? ok() : im.addEventListener('load', ok, { once: true }); im.addEventListener('error', () => im.classList.add('ok'), { once: true }); });
-    grid.querySelectorAll('.like').forEach(b => { paint(b.dataset.art); cio ? cio.observe(b) : loadCount(b.dataset.art); });
-  }
-
-  // ---------- portfolio: a horizontal band of "bricks" that keep each image's natural shape ----------
-  // Two lanes (rows) of equal height; every piece keeps its own aspect ratio, so its width follows from its shape.
-  // Each piece goes into whichever lane is shorter (like masonry turned sideways). The first piece, and any piece
-  // marked "featured" in the CMS, is a big tile spanning both lanes; before placing one, the next small pieces may be
-  // pulled forward to even the lanes out, and any small leftover is spread as extra spacing so there are no holes.
+  // ---------- portfolio: a horizontal band of "bricks" in two rows ----------
+  // Every tile gets a shape from a repeating mix of wide, square and tall ratios (the picture is cropped to it with
+  // object-fit: cover; the image FILE is never changed and the viewer always shows the full, uncropped original).
+  // Tiles go into whichever row is shorter, so the seams are staggered like brickwork. The first piece, and any piece
+  // marked "Show bigger" in the CMS, is a big tile as tall as both rows. Layout is computed once (and on resize):
+  // nothing moves while the band is being swiped.
+  const RATIOS = [1.5, 0.8, 1, 1.3, 0.7, 1.15, 1.6, 0.85, 1.05, 0.75];
+  const BIG_RATIO = 0.8;
   const pf = (() => {
     const scroller = $('#pfScroll'), track = $('#pfTrack'), wrapEl = $('#pfWrap'), hint = $('#pfHint');
-    let laid = false, lastH = 0, lastW = 0;
-    const aspectOf = (a) => { const z = sizeOf(a.image); return a.aspect || (z && z[0] && z[1] ? z[0] / z[1] : 0.75); };
-    const html = (a, i) => {
-      const label = a.title || a.caption || `Artwork ${i + 1}`;
-      return `<div class="brick" data-i="${i}" style="--d:${Math.min(i, 10) * 0.06}s"><button class="tile" type="button" data-i="${i}" aria-label="Open ${esc(label)}">
-        <img src="${esc(thumb(a.image))}" alt="${esc(label)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" draggable="false">
-        ${a.title ? `<span class="cap">${esc(a.title)}</span>` : ''}</button>
-        <div class="meta"><button class="like" type="button" data-art="${esc(a.id)}" aria-pressed="false" aria-label="Like"><svg aria-hidden="true"><use href="#i-heart"/></svg><span class="n" hidden></span></button>
-        <span class="views" data-art="${esc(a.id)}" aria-label="Views" hidden><svg aria-hidden="true"><use href="#i-eye"/></svg><span class="n" hidden></span></span></div></div>`;
-    };
+    let lastH = 0, lastW = 0;
+    const big = (i) => art[i].featured === true || (i === 0 && innerWidth >= 720);   // phones: the first piece stays in the rows so the brick pattern shows
+    const html = (a, i) => `<div class="brick" data-i="${i}" style="--d:${Math.min(i, 10) * 0.06}s"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
+        <img src="${esc(thumb(a.image))}" alt="Artwork ${i + 1} by @yazarts" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" draggable="false"></button></div>`;
     function pack() {
       const H = track.clientHeight; if (!H || !art.length) return;
       const gap = innerWidth < 720 ? 8 : 12, h = (H - gap) / 2, lanes = [0, 0], rects = [], laneTiles = [[], []];
-      const big = (i) => i === 0 || art[i].featured === true;
-      const order = art.map((_, i) => i), used = new Set();
+      let n = 0;
+      // stretch the shorter row's tiles (since the last big tile) a little so both rows end flush: no holes, even gaps
+      const even = (maxGrow) => {
+        const s = lanes[0] < lanes[1] ? 0 : 1, d = Math.abs(lanes[0] - lanes[1]), ts = laneTiles[s];
+        if (d < 0.5 || !ts.length) return;
+        const total = ts.reduce((a, t) => a + rects[t].w, 0); if (d / total > maxGrow) return;
+        let x = rects[ts[0]].x; ts.forEach(t => { rects[t].w += d * rects[t].w / total; rects[t].x = x; x += rects[t].w + gap; }); lanes[s] = lanes[1 - s];
+      };
+      const used = new Set();
       const putSmall = (i) => {
-        const w = Math.max(40, h * aspectOf(art[i])), l = lanes[0] <= lanes[1] ? 0 : 1;
+        const w = h * RATIOS[n++ % RATIOS.length], l = lanes[0] <= lanes[1] ? 0 : 1;
         rects[i] = { x: lanes[l], y: l * (h + gap), w, h }; laneTiles[l].push(i); lanes[l] += w + gap; used.add(i);
       };
-      for (let k = 0; k < order.length; k++) {
-        const i = order[k]; if (used.has(i)) continue;
-        if (!big(i)) { putSmall(i); continue; }
-        // even the lanes out with up to 3 of the following small pieces, but only while that actually helps
-        for (let look = k + 1, n = 0; look < order.length && n < 3; look++) {
-          const j = order[look]; if (used.has(j) || big(j)) break;
-          const d = Math.abs(lanes[0] - lanes[1]), w = h * aspectOf(art[j]) + gap;
-          if (d < h * 0.12 || Math.abs(d - w) >= d) break;
-          putSmall(j); n++;
-        }
-        // spread what is left over the shorter lane's pieces since the last big tile, so it ends flush
-        const short = lanes[0] < lanes[1] ? 0 : 1, d = Math.abs(lanes[0] - lanes[1]), ts = laneTiles[short];
-        if (d > 0.5 && ts.length) ts.forEach((t, n) => { rects[t].x += d * (n + 1) / ts.length; });
-        const x = Math.max(lanes[0], lanes[1]), w = H * aspectOf(art[i]);
+      art.forEach((a, i) => {
+        if (used.has(i)) return;
+        if (!big(i)) return putSmall(i);
+        // before a big tile, pull the next small pieces forward while the rows are clearly uneven, then stretch to flush
+        for (let j = i + 1; j < art.length && Math.abs(lanes[0] - lanes[1]) > h * 0.45; j++) if (!big(j) && !used.has(j)) putSmall(j);
+        even(1.2);
+        const x = Math.max(lanes[0], lanes[1]), w = H * BIG_RATIO;
         rects[i] = { x, y: 0, w, h: H }; lanes[0] = lanes[1] = x + w + gap; laneTiles[0] = []; laneTiles[1] = []; used.add(i);
-      }
+      });
+      even(0.45);
       track.style.width = Math.max(lanes[0], lanes[1]) - gap + 'px';
       track.querySelectorAll('.brick').forEach(b => { const r = rects[+b.dataset.i]; if (!r) return;
-        b.style.left = r.x + 'px'; b.style.top = r.y + 'px'; b.style.width = r.w + 'px'; b.style.height = r.h + 'px';
+        b.style.cssText += `;left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px`;
         b.classList.toggle('big', r.h === H); });
-      lastH = H; lastW = innerWidth; laid = true; sync();
+      lastH = H; lastW = innerWidth; sync();
     }
     function render() {
       track.innerHTML = art.map(html).join('');
-      $('#empty').hidden = art.length > 0; wrapEl.hidden = !art.length; $('.pf-nav').hidden = !art.length;
-      track.querySelectorAll('.tile img').forEach((im, i) => {
-        const ok = () => {
-          im.classList.add('ok');
-          if (im.naturalWidth && !sizeOf(art[i].image)) {        // size not in the manifest (e.g. local preview): measure and re-pack once
-            const a = im.naturalWidth / im.naturalHeight; if (Math.abs(a - aspectOf(art[i])) > 0.01) { art[i].aspect = a; schedule(); }
-          }
-        };
-        im.complete && im.naturalWidth ? ok() : im.addEventListener('load', ok, { once: true }); im.addEventListener('error', () => im.classList.add('ok'), { once: true });
+      $('#empty').hidden = art.length > 0; wrapEl.hidden = !art.length;
+      track.querySelectorAll('.tile img').forEach(im => {
+        const ok = () => im.classList.add('ok');
+        im.complete && im.naturalWidth ? ok() : im.addEventListener('load', ok, { once: true }); im.addEventListener('error', ok, { once: true });
       });
-      track.querySelectorAll('.like').forEach(b => { paint(b.dataset.art); cio ? cio.observe(b) : loadCount(b.dataset.art); });
       pack();
     }
     let packT = 0; const schedule = () => { cancelAnimationFrame(packT); packT = requestAnimationFrame(pack); };
     addEventListener('resize', () => { if (track.clientHeight !== lastH || innerWidth !== lastW) schedule(); });
 
-    // edge fades, arrows and the "swipe" hint follow the scroll position
+    // edge fades, arrows and the "swipe" hint follow the scroll position (only classes on the WRAPPER change, and only
+    // when the state actually flips, so scrolling never forces the band itself to repaint)
+    let st = '';
     function sync() {
       const max = scroller.scrollWidth - scroller.clientWidth, x = scroller.scrollLeft;
-      scroller.classList.toggle('at-start', x < 4); scroller.classList.toggle('at-end', x > max - 4);
-      scroller.classList.toggle('no-scroll', max < 4);
+      const s = (x < 4 ? 's' : '') + (x > max - 4 ? 'e' : '') + (max < 4 ? 'n' : '') + (x > 30 ? 'm' : '');
+      if (s === st) return; st = s;
+      wrapEl.classList.toggle('at-start', x < 4); wrapEl.classList.toggle('at-end', x > max - 4); wrapEl.classList.toggle('no-scroll', max < 4);
       $('#pfPrev').disabled = x < 4; $('#pfNext').disabled = x > max - 4;
       if (x > 30) hint.classList.add('gone');
     }
-    scroller.addEventListener('scroll', () => { sync(); if (!anim) target = scroller.scrollLeft; }, { passive: true });
+    let ticking = false;
+    scroller.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; sync(); }); } if (!anim) target = scroller.scrollLeft; }, { passive: true });
 
-    // mouse wheel / trackpad: vertical wheel scrolls the band sideways (smoothly) until it reaches an end, then the page scrolls on
+    // Mouse wheel over the band scrolls it sideways until it reaches an end, then the page scrolls on.
+    // Trackpads (small pixel deltas) move it 1:1 so their own momentum stays smooth; notched mouse wheels glide.
+    // Horizontal trackpad swipes, touch and pinch are left entirely to the browser (native momentum scrolling).
     let target = 0, anim = 0;
     const step = () => {
       const x = scroller.scrollLeft, d = target - x;
@@ -267,185 +255,88 @@
       scroller.scrollLeft = x + d * 0.2; anim = requestAnimationFrame(step);
     };
     scroller.addEventListener('wheel', e => {
-      if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;                 // real horizontal swipes and pinch stay native
+      if (e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
       const max = scroller.scrollWidth - scroller.clientWidth; if (max < 4) return;
       const dy = e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? scroller.clientWidth : 1);
       const base = anim ? target : scroller.scrollLeft;
       if ((dy > 0 && base >= max - 1) || (dy < 0 && base <= 1)) return;                  // at the end: let the page scroll
-      e.preventDefault(); target = Math.max(0, Math.min(max, base + dy));
-      if (reduce) { scroller.scrollLeft = target; return; }
+      e.preventDefault();
+      if (reduce || (e.deltaMode === 0 && Math.abs(e.deltaY) < 50 && !anim)) { scroller.scrollLeft = Math.max(0, Math.min(max, scroller.scrollLeft + dy)); target = scroller.scrollLeft; return; }
+      target = Math.max(0, Math.min(max, base + dy));
       if (!anim) anim = requestAnimationFrame(step);
     }, { passive: false });
     const by = (dir) => { cancelAnimationFrame(anim); anim = 0; scroller.scrollBy({ left: dir * scroller.clientWidth * 0.8, behavior: reduce ? 'auto' : 'smooth' }); };
     $('#pfPrev').addEventListener('click', () => by(-1)); $('#pfNext').addEventListener('click', () => by(1));
     scroller.addEventListener('keydown', e => { if (e.target !== scroller) return; if (e.key === 'ArrowRight') { e.preventDefault(); by(1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); by(-1); } });
 
-    // mouse drag-to-scroll with a little momentum (touch uses the browser's own swipe + momentum)
+    // desktop mouse: drag-to-scroll with a little momentum (touch and pen use the browser's own swipe + momentum)
     let drag = null, dragged = false;
     scroller.addEventListener('pointerdown', e => {
-      if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('.like')) return;
-      cancelAnimationFrame(anim); anim = 0; drag = { x: e.clientX, s: scroller.scrollLeft, t: performance.now(), v: 0, lx: e.clientX, lt: performance.now() }; dragged = false;
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      cancelAnimationFrame(anim); anim = 0; drag = { x: e.clientX, s: scroller.scrollLeft, v: 0, lx: e.clientX, lt: performance.now() }; dragged = false;
     });
     addEventListener('pointermove', e => {
       if (!drag) return; const dx = e.clientX - drag.x;
-      if (!dragged && Math.abs(dx) > 6) { dragged = true; scroller.classList.add('dragging'); }
+      if (!dragged && Math.abs(dx) > 6) { dragged = true; wrapEl.classList.add('dragging'); }
       if (dragged) { scroller.scrollLeft = drag.s - dx; const t = performance.now(); if (t > drag.lt) { drag.v = (e.clientX - drag.lx) / (t - drag.lt); drag.lx = e.clientX; drag.lt = t; } }
     });
     addEventListener('pointerup', () => {
-      if (!drag) return; const v = drag.v; drag = null; scroller.classList.remove('dragging');
+      if (!drag) return; const v = drag.v; drag = null; wrapEl.classList.remove('dragging');
       if (dragged && !reduce && Math.abs(v) > 0.2) { const max = scroller.scrollWidth - scroller.clientWidth; target = Math.max(0, Math.min(max, scroller.scrollLeft - v * 320)); if (!anim) anim = requestAnimationFrame(step); }
     });
     // a drag must not also count as a click on the artwork underneath
     scroller.addEventListener('click', e => { if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; } }, true);
 
-    track.addEventListener('click', e => {
-      const t = e.target.closest('.tile'); if (t) return open(+t.dataset.i, { list: art, grid: track, tint: null });
-      const b = e.target.closest('.like'); if (b) like(b.dataset.art, b);
-    });
-    // entrance: the bricks rise in one after another when the band first scrolls into view
+    track.addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) open(+t.dataset.i, { list: art, grid: track, tint: null }); });
+    // entrance: the bricks rise in one after another the first time the band scrolls into view
     if (!reduce && 'IntersectionObserver' in window) {
-      const eio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { track.classList.add('in'); eio.disconnect(); } }), { threshold: 0.15 });
+      const eio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { track.classList.add('in'); eio.disconnect(); setTimeout(() => track.classList.add('settled'), 1800); } }), { threshold: 0.15 });
       eio.observe(track);
-    } else track.classList.add('in');
+    } else track.classList.add('in', 'settled');
     return { render, pack, sync };
   })();
 
-  // ---------- albums ----------
-  const albumGrid = $('#albumGrid'), av = $('#av'), avGrid = $('#avGrid'), avCover = $('#avCover');
-  let curAlbum = null, albumBusy = false;
-  function renderAlbums() {
-    albumGrid.innerHTML = albums.map((al, k) => `<div class="album-card fade" style="--d:${(k % 4) * 0.07}s">
-      <button class="album-tile" type="button" data-k="${k}" aria-label="Open album ${esc(al.name)}">
-        ${al.cover ? `<img src="${esc(thumb(al.cover))}" alt="" decoding="async" loading="lazy">` : '<span class="album-blank" aria-hidden="true"></span>'}
-        ${al.music ? '<span class="album-note" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></span>' : ''}
-      </button>
-      <div class="album-info"><strong>${esc(al.name)}</strong><small>${al.items.length} artwork${al.items.length === 1 ? '' : 's'}</small></div></div>`).join('');
-    albumGrid.querySelectorAll('.album-card').forEach(observe);
-    albumGrid.querySelectorAll('img').forEach(im => { const ok = () => im.classList.add('ok'); im.complete && im.naturalWidth ? ok() : im.addEventListener('load', ok, { once: true }); });
-    $('#albumsEmpty').hidden = albums.length > 0;
-  }
-  albumGrid.addEventListener('click', e => { const t = e.target.closest('.album-tile'); if (t) openAlbum(+t.dataset.k); });
-  const darkTint = (t) => t ? `hsl(${t.h} ${Math.round(t.s * 100)}% 13% / .86)` : 'rgba(12,20,32,.7)';
-  async function openAlbum(k) {
-    const al = albums[k]; if (!al || albumBusy || !av.hidden) return; albumBusy = true; curAlbum = al;
-    lastAlbumFocus = document.activeElement;
-    const tile = albumGrid.querySelector(`.album-tile[data-k="${k}"]`), timg = tile?.querySelector('img');
-    al.tint = al.tint || (al.cover && timg ? colourOf(thumb(al.cover), timg) : null);
-    $('#avName').textContent = al.name; $('#avCount').textContent = `${al.items.length} artwork${al.items.length === 1 ? '' : 's'}`;
-    $('#avDesc').textContent = al.description || ''; $('#avDesc').hidden = !al.description;
-    avCover.hidden = !al.cover; if (al.cover) avCover.src = thumb(al.cover);
-    $('#avTint').style.backgroundColor = darkTint(al.tint); av.dataset.tint = al.tint ? `${al.tint.h},${Math.round(al.tint.s * 100)}` : '';
-    renderCards(avGrid, al.items); $('#avEmpty').hidden = al.items.length > 0;
-    avGrid.querySelectorAll('.card').forEach((c, i) => c.style.setProperty('--d', (0.18 + Math.min(i, 11) * 0.045) + 's'));
-    av.hidden = false; lockScroll(1); $('#avScroll').scrollTop = 0;
-    sound.album(al);
-    $('#avClose').focus({ preventScroll: true });
-    const r0 = !reduce && timg && onScreen(timg);
-    requestAnimationFrame(() => av.classList.add('open'));
-    if (r0 && al.cover) {
-      avCover.style.opacity = '0'; timg.style.visibility = 'hidden';
-      await fly(r0, avCover.getBoundingClientRect(), timg.currentSrc || timg.src, 14, 10, 460, av);
-      avCover.style.opacity = ''; timg.style.visibility = ''; flyer?.remove(); flyer = null;
-    }
-    albumBusy = false;
-  }
-  let lastAlbumFocus = null;
-  async function closeAlbum() {
-    if (av.hidden || albumBusy || !lb.hidden) return; albumBusy = true;
-    const k = albums.indexOf(curAlbum), timg = albumGrid.querySelector(`.album-tile[data-k="${k}"] img`);
-    sound.album(null);
-    const r1 = !reduce && timg && onScreen(timg), r0 = !avCover.hidden && onScreen(avCover);
-    av.classList.remove('open');
-    if (r1 && r0) {
-      avCover.style.opacity = '0'; timg.style.visibility = 'hidden';
-      await fly(r0, r1, avCover.currentSrc || avCover.src, 10, 14, 400, av);
-      timg.style.visibility = '';
-    } else await new Promise(r => setTimeout(r, reduce ? 0 : 360));
-    av.hidden = true; avCover.style.opacity = ''; flyer?.remove(); flyer = null; avGrid.innerHTML = ''; lockScroll(-1); curAlbum = null; albumBusy = false;
-    lastAlbumFocus?.focus?.({ preventScroll: true });
-  }
-  $('#avClose').onclick = closeAlbum;
-  avGrid.addEventListener('click', e => {
-    const t = e.target.closest('.tile'); if (t && curAlbum) return open(+t.dataset.i, { list: curAlbum.items, grid: avGrid, tint: curAlbum.tint || null });
-    const b = e.target.closest('.like'); if (b) like(b.dataset.art, b);
-  });
-  // page scroll lock shared by the album view and the viewer
-  let locks = 0;
-  function lockScroll(d) {
-    const was = locks; locks = Math.max(0, locks + d);
-    if (!was && locks) { const sb = innerWidth - document.documentElement.clientWidth; document.body.style.overflow = 'hidden'; if (sb > 0) document.body.style.paddingRight = sb + 'px'; }
-    if (was && !locks) { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }
-  }
-
-  // ---------- music: site background track + per-album tracks ----------
+  // ---------- background music (the soft blue toggle next to the logo) ----------
   const sound = (() => {
-    const bg = $('#bgAudio'), al = $('#albumAudio'), btn = $('#musicBtn'), abtn = $('#avSound');
-    const BG_VOL = 0.35, AL_VOL = 0.6;
-    let on = store.get('yaz.sound', true), album = null, waiting = false;
-    const fades = new WeakMap();
-    function fade(el, to, ms, then) {
-      cancelAnimationFrame(fades.get(el)); const from = el.volume, t0 = performance.now();
-      const step = (t) => { const k = Math.min(1, (t - t0) / ms); try { el.volume = from + (to - from) * k; } catch { } if (k < 1) fades.set(el, requestAnimationFrame(step)); else then?.(); };
-      fades.set(el, requestAnimationFrame(step));
+    const bg = $('#bgAudio'), btn = $('#musicBtn'), VOL = 0.35;
+    let on = store.get('yaz.sound', true), waiting = false, fadeRaf = 0;
+    function fade(to, ms, then) {
+      cancelAnimationFrame(fadeRaf); const from = bg.volume, t0 = performance.now();
+      const step = (t) => { const k = Math.min(1, (t - t0) / ms); try { bg.volume = from + (to - from) * k; } catch { } if (k < 1) fadeRaf = requestAnimationFrame(step); else then?.(); };
+      fadeRaf = requestAnimationFrame(step);
     }
-    const playing = () => (album && al.src && !al.paused) || (!album && bg.src && !bg.paused);
-    function ui() {
-      const p = playing();
-      [btn, abtn].forEach(b => { b.classList.toggle('playing', p); b.setAttribute('aria-pressed', p); });
-      btn.setAttribute('aria-label', p ? 'Mute background music' : 'Play background music');
-      abtn.setAttribute('aria-label', p ? 'Mute album music' : 'Play album music');
-    }
-    function start(el, vol) {
-      if (!el.getAttribute('src')) return Promise.reject(new Error('none'));
-      el.volume = 0; const pr = el.play(); return (pr || Promise.resolve()).then(() => { fade(el, vol, 900); ui(); });
-    }
-    function stop(el, keep) { if (el.paused) return; fade(el, 0, keep ? 450 : 350, () => { el.pause(); if (!keep) el.currentTime = 0; ui(); }); }
+    const playing = () => bg.src && !bg.paused;
+    function ui() { const p = playing(); btn.classList.toggle('playing', p); btn.setAttribute('aria-pressed', p); btn.setAttribute('aria-label', p ? 'Mute background music' : 'Play background music'); }
+    function start() { if (!bg.getAttribute('src')) return Promise.reject(new Error('none')); bg.volume = 0; return (bg.play() || Promise.resolve()).then(() => { fade(VOL, 900); ui(); }); }
+    function stop() { if (!bg.paused) fade(0, 450, () => { bg.pause(); ui(); }); }
     // browsers block autoplay with sound until the visitor interacts, so start on the first click / tap / key press anywhere
     function waitForGesture() {
       if (waiting) return; waiting = true;
       const go = (e) => {
-        if (e.target?.closest?.('#musicBtn, #avSound')) return;      // the music button handles its own click
+        if (e.target?.closest?.('#musicBtn')) return;      // the music button handles its own click
         ['pointerdown', 'keydown', 'touchend'].forEach(t => removeEventListener(t, go, true)); waiting = false;
-        if (on && !album) start(bg, BG_VOL).catch(() => { });
+        if (on) start().catch(() => { });
       };
       ['pointerdown', 'keydown', 'touchend'].forEach(t => addEventListener(t, go, true));
     }
     function setBg(src) {
       if (!src) { btn.hidden = true; return; }
       bg.src = src; bg.loop = true; bg.preload = 'auto'; btn.hidden = false; ui();
-      if (on) start(bg, BG_VOL).catch(() => waitForGesture());
+      if (on) start().catch(() => waitForGesture());
     }
-    function toggle() {
-      if (playing()) { on = false; stop(album ? al : bg, true); }
-      else { on = true; (album ? start(al, AL_VOL) : start(bg, BG_VOL)).catch(() => { }); }
-      store.set('yaz.sound', on); ui();
-    }
-    btn.addEventListener('click', toggle); abtn.addEventListener('click', toggle);
-    [bg, al].forEach(el => ['play', 'pause', 'ended'].forEach(t => el.addEventListener(t, ui)));
-    return {
-      setBg, toggle,
-      album(a) {     // open (a = album) or close (a = null) an album
-        if (a) {
-          album = a; stop(bg, true);
-          abtn.hidden = !a.music;
-          if (a.music) { al.src = asset(a.music); al.loop = true; al.currentTime = 0; if (on) start(al, AL_VOL).catch(() => ui()); }
-        } else {
-          album = null; stop(al, false); setTimeout(() => { if (!album) al.removeAttribute('src'); }, 400);
-          if (on && bg.getAttribute('src')) start(bg, BG_VOL).catch(() => waitForGesture());
-        }
-        ui();
-      },
-    };
+    btn.addEventListener('click', () => { if (playing()) { on = false; stop(); } else { on = true; start().catch(() => { }); } store.set('yaz.sound', on); ui(); });
+    ['play', 'pause', 'ended'].forEach(t => bg.addEventListener(t, ui));
+    return { setBg };
   })();
 
-  // ---------- viewer: shared-element open/close, tinted backdrop, swipe carousel, pinch/double-tap zoom ----------
-  const lb = $('#lb'), stage = $('#lbStage'), track = $('#lbTrack'), textEl = $('#lbText'), tintEl = $('#lbTint'), glowEl = $('#lbGlow');
+  // ---------- viewer: full-screen artwork only; shared-element open/close, swipe carousel, pinch/double-tap zoom ----------
+  const lb = $('#lb'), stage = $('#lbStage'), track = $('#lbTrack'), tintEl = $('#lbTint'), glowEl = $('#lbGlow');
   const EASE = 'cubic-bezier(.22,.8,.24,1)', GAP = 28;
   let idx = 0, panelI = -1, lastFocus = null, W = 0, offset = 0, pendingK = 0, animTimer = 0, closing = false, flyer = null;
-  let ctx = { list: [], grid: null, tint: null };      // what the viewer is showing: the portfolio, or one album (tint = album cover colour)
+  let ctx = { list: [], grid: null, tint: null };      // what the viewer is showing: the portfolio or the commission examples
   const L = () => ctx.list;
   const N = () => L().length, wrap = (i) => ((i % N()) + N()) % N();
-  const tileImg = (i) => ctx.grid?.querySelector(`.tile[data-i="${i}"] img`);
+  const tileImg = (i) => ctx.grid?.querySelector(`[data-i="${i}"] img`);
   const slides = [0, 1, 2].map(() => { const s = document.createElement('div'); s.className = 'lb-slide'; s.innerHTML = '<img alt="" draggable="false">'; track.appendChild(s); return s; });
   const curImg = () => slides[1].firstElementChild;   // slides = [previous, current, next]
 
@@ -459,7 +350,7 @@
   }
   function fill(slot, i) {
     const s = slides[slot], im = s.firstElementChild, j = wrap(i), a = L()[j], src = asset(a.image);   // always the untouched original file
-    s.dataset.i = j; s.setAttribute('aria-hidden', slot !== 1); im.alt = slot === 1 ? (a.title || a.caption || 'Artwork') : '';
+    s.dataset.i = j; s.setAttribute('aria-hidden', slot !== 1); im.alt = slot === 1 ? `Artwork ${j + 1} of ${N()} by @yazarts` : '';
     if (im.getAttribute('src') !== src) {
       im.style.opacity = ''; const t = thumb(a.image);
       im.style.backgroundImage = t !== src ? `url("${t.replace(/"/g, '%22')}")` : '';      // fast preview while the full-resolution file loads
@@ -499,20 +390,10 @@
     lb.dataset.tint = t ? `${t.h},${s}` : '';
   }
 
-  // ----- right-hand (desktop) / below-image (mobile) text panel -----
-  let panelTimer = 0;
-  function setPanel(i, animate) {
-    if (i === panelI) return; panelI = i; const a = L()[i];
-    $('#lbLike').dataset.art = a.id; $('#lbViews').dataset.art = a.id; countView(a.id);
-    const apply = () => {
-      $('#lbTitle').textContent = a.title || ''; $('#lbTitle').hidden = !a.title;
-      $('#lbCap').textContent = a.caption || ''; $('#lbCap').hidden = !a.caption;
-      $('#lbIdx').textContent = `${i + 1} / ${N()}`;
-      $('#lbLive').textContent = `Artwork ${i + 1} of ${N()}${a.title ? ': ' + a.title : ''}`;
-      paint(a.id); loadCount(a.id); textEl.classList.remove('swap');
-    };
-    clearTimeout(panelTimer);
-    if (animate && !reduce) { textEl.classList.add('swap'); panelTimer = setTimeout(apply, 170); } else apply();
+  // ----- screen-reader announcement + ambient tint (no titles, likes or views: just the artwork) -----
+  function setPanel(i) {
+    if (i === panelI) return; panelI = i;
+    $('#lbLive').textContent = `Artwork ${i + 1} of ${N()}`;
     setTint(i);
   }
 
@@ -521,7 +402,7 @@
     if (N() < 2) k = 0;
     if (animTimer) commit();
     const target = -k * (W + GAP), dist = Math.abs(target - offset);
-    pendingK = k; setPanel(wrap(idx + k), true);
+    pendingK = k; setPanel(wrap(idx + k));
     if (reduce || dist < 1) { setOffset(target); commit(); return; }
     const sp = Math.abs(v), ms = Math.round(Math.max(200, Math.min(460, sp > 0.25 ? dist / sp * 1.8 : 240 + dist * 0.25)));
     setOffset(target, ms); animTimer = setTimeout(commit, ms + 20);
@@ -668,7 +549,7 @@
     ctx = c; slides.forEach(s => { const im = s.firstElementChild; im.removeAttribute('src'); im.style.backgroundImage = ''; });
     lastFocus = document.activeElement; idx = i; panelI = -1; closing = false;
     lb.hidden = false; lockScroll(1);
-    layout(); fill(0, i - 1); fill(1, i); fill(2, i + 1); setOffset(0); setPanel(i, false);
+    layout(); fill(0, i - 1); fill(1, i); fill(2, i + 1); setOffset(0); setPanel(i);
     $('#lbClose').focus({ preventScroll: true });
     const thumb = tileImg(i), r0 = !reduce && onScreen(thumb), im = curImg();
     requestAnimationFrame(() => lb.classList.add('open'));
@@ -682,9 +563,9 @@
     if (lb.hidden || closing) return; closing = true;
     if (animTimer) commit(); if (offset) setOffset(0);
     const im = curImg(); resetZoom(im);
-    const card = ctx.grid?.querySelector(`.tile[data-i="${idx}"]`)?.closest('.card, .brick');
+    ctx.onClose?.(idx);                       // e.g. the commission slideshow jumps to the slide that was being viewed
+    const card = ctx.grid?.querySelector(`[data-i="${idx}"]`)?.closest('.brick, .tier');
     if (card && card.offsetParent) {
-      card.classList.add('in', 'done');
       if (card.classList.contains('brick')) { const sc = card.closest('.pf-scroll'); const r = card.getBoundingClientRect(), R = sc.getBoundingClientRect(); if (r.left < R.left || r.right > R.right) { sc.scrollLeft = Math.max(0, card.offsetLeft - (sc.clientWidth - card.offsetWidth) / 2); pf.sync(); } }
       if (!onScreen(card.querySelector('img'))) card.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
     }
@@ -699,15 +580,9 @@
     lastFocus?.focus?.({ preventScroll: true });
   }
   $('#lbClose').onclick = close; $('#lbPrev').onclick = () => go(-1); $('#lbNext').onclick = () => go(1);
-  $('#lbLike').onclick = () => L()[panelI] && like(L()[panelI].id, $('#lbLike'));
   addEventListener('resize', () => { if (!lb.hidden) { if (animTimer) commit(); layout(); setOffset(0); resetZoom(curImg()); } });
   addEventListener('keydown', e => {
-    if (lb.hidden) {                       // album view open (no artwork viewer on top)
-      if (av.hidden) return;
-      if (e.key === 'Escape') { e.preventDefault(); closeAlbum(); }
-      else if (e.key === 'Tab') { const f = [...av.querySelectorAll('button')].filter(x => x.offsetParent); const k = f.indexOf(document.activeElement); if (k === -1 || (e.shiftKey ? k === 0 : k === f.length - 1)) { e.preventDefault(); f[e.shiftKey ? f.length - 1 : 0]?.focus(); } }
-      return;
-    }
+    if (lb.hidden) return;
     if (e.key === 'Escape') { e.preventDefault(); return zs(curImg()).s > 1.01 ? resetZoom(curImg(), 240) : close(); }
     if (e.key === 'Tab') { const f = [...lb.querySelectorAll('button')].filter(x => x.offsetParent && getComputedStyle(x).visibility !== 'hidden'); const k = f.indexOf(document.activeElement); e.preventDefault(); f[(k + (e.shiftKey ? -1 : 1) + f.length) % f.length]?.focus(); return; }
     if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); } else if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
@@ -715,19 +590,25 @@
     else if (e.key === '-' || e.key === '0') resetZoom(curImg(), 200);
   });
 
-  const portfolioJson = () => json('content/portfolio.json').catch(() => ({ artworks: [] }));
-  Promise.all([json('content/site.json').catch(() => ({})), portfolioJson(),
-    json('content/albums.json').catch(() => ({ albums: [] })), json('content/thumbs.json').catch(() => ({})),
-    json('content/commissions.json').catch(() => ({ tiers: [] }))]).then(([s, g, A, T, C]) => {
+  // ---------- content ----------
+  Promise.all([
+    json('content/welcome.json').catch(() => ({})), json('content/portfolio.json').catch(() => ({ artworks: [] })),
+    json('content/commissions.json').catch(() => ({ tiers: [] })), json('content/contact.json').catch(() => ({ links: [] })),
+    json('content/site.json').catch(() => ({})), json('content/thumbs.json').catch(() => ({})),
+  ]).then(([w, g, C, K, s, T]) => {
     T = T && typeof T === 'object' ? T : {};
-    if (T.thumbs || T.sizes) { thumbs = T.thumbs || {}; sizes = T.sizes || {}; } else thumbs = T;     // old manifest = plain { path: thumb }
-    const pieces = (list) => (list || []).filter(a => a && a.image).map(a => ({ ...a, id: artId(a.image) }));
-    art = pieces(g.artworks);
-    albums = (A.albums || []).filter(a => a && (a.name || a.cover)).map(a => ({ ...a, name: a.name || 'Untitled album', items: pieces(a.artworks) }));
-    tiers = (C.tiers || []).filter(t => t && (t.name || t.image));
-    renderSite(s); pf.render(); renderAlbums(); tierShow.render(tiers);
+    if (T.thumbs || T.sizes) { thumbs = T.thumbs || {}; sizes = T.sizes || {}; } else thumbs = T;
+    if (s.siteName) { $('#brandName').textContent = s.siteName; $('#footName').textContent = s.siteName; }
+    renderWelcome(w);
+    art = (g.artworks || []).filter(a => a && a.image);
+    pf.render();
+    const isOpen = C.open !== false;
+    $('#commKicker').classList.toggle('closed', !isOpen);
+    $('#commKicker').textContent = isOpen ? 'Open for commissions!' : 'Commissions closed for now';
+    $('#commText').textContent = (isOpen ? C.openText : C.closedText) || ''; $('#commText').hidden = !$('#commText').textContent;
+    tiers = (C.tiers || []).filter(t => t && (t.name || t.image)); tierShow.render(tiers);
+    contact.set(K);
     sound.setBg(s.music ? asset(s.music) : '');
-    const ids = new Set([...art, ...albums.flatMap(a => a.items)].map(a => a.id)); pending().filter(id => ids.has(id)).forEach(send);   // likes that couldn't be sent last time
   });
 
   // ---------- commissions: auto-advancing slideshow of tiers ----------
@@ -741,8 +622,9 @@
       `<span class="w">${[...w].map(c => `<span class="ch">${esc(c)}</span>`).join('')}</span>`).join('');
     function render(t) {
       list = t; box.hidden = !list.length; $('#commWhat').hidden = !list.length;
+      let vi = 0;
       stage.innerHTML = list.map((t, k) => `<article class="tier" data-k="${k}" role="group" aria-roledescription="slide" aria-label="${k + 1} of ${list.length}: ${esc(t.name || '')}" aria-hidden="true">
-        <div class="tier-media">${t.image ? `<img src="${esc(thumb(t.image))}" alt="${esc(t.name ? 'Example: ' + t.name : 'Example artwork')}" decoding="async" loading="${k ? 'lazy' : 'eager'}" draggable="false">` : ''}</div>
+        <div class="tier-media">${t.image ? `<button class="tier-open" type="button" data-i="${vi++}" aria-label="View the ${esc(t.name || 'example')} example full screen"><img src="${esc(thumb(t.image))}" alt="${esc(t.name ? 'Example: ' + t.name : 'Example artwork')}" decoding="async" loading="${k ? 'lazy' : 'eager'}" draggable="false"></button>` : ''}</div>
         <div class="tier-text">
           <h3 class="tier-name">${letters(t.name)}</h3>
           ${t.description ? `<p class="tier-desc">${esc(t.description)}</p>` : ''}
@@ -760,18 +642,19 @@
         r.setAttribute('x', 1.5); r.setAttribute('y', 1.5); r.setAttribute('width', Math.max(0, w - 3)); r.setAttribute('height', Math.max(0, h - 3)); });
     }
     addEventListener('resize', sizeRects); document.fonts?.ready.then(sizeRects);
-    function show(k, dir = 1, first = false) {
+    function show(k, dir = 1, first = false, instant = false) {
       if (!list.length) return; k = ((k % list.length) + list.length) % list.length;
       const els = [...stage.children], prev = els[cur], next = els[k];
       if (!first && k === cur) return;
       els.forEach(e => e.classList.remove('leave', 'back'));
       if (prev && prev !== next) { prev.classList.remove('on'); prev.classList.add('leave'); prev.classList.toggle('back', dir < 0); prev.setAttribute('aria-hidden', 'true'); }
-      next.classList.toggle('back', dir < 0); void next.offsetWidth; next.classList.add('on'); next.setAttribute('aria-hidden', 'false');
+      next.classList.toggle('back', dir < 0); if (instant) { stage.classList.add('instant'); requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.remove('instant'))); }
+      void next.offsetWidth; next.classList.add('on'); next.setAttribute('aria-hidden', 'false');
       cur = k; elapsed = 0;
       dots.querySelectorAll('.t-dot').forEach((d, i) => { d.classList.toggle('on', i === k); d.setAttribute('aria-current', i === k ? 'true' : 'false'); d.style.setProperty('--p', 0); });
       sizeRects();
     }
-    const paused = () => reduce || hover || focus || touchHold || hidden || list.length < 2;
+    const paused = () => reduce || hover || focus || touchHold || hidden || list.length < 2 || !lb.hidden;
     function tick(t) {
       const dt = Math.min(100, t - last); last = t;
       if (!paused() && onScreen(stage)) {
@@ -797,9 +680,17 @@
       sx = null; touchHold = setTimeout(() => { touchHold = 0; }, 2500);
     }, { passive: true });
     // mouse / pen swipe too
-    let px = null;
-    stage.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') px = e.clientX; });
-    stage.addEventListener('pointerup', e => { if (px != null && Math.abs(e.clientX - px) > 60) go(e.clientX < px ? 1 : -1); px = null; });
+    let px = null, swiped = false;
+    stage.addEventListener('pointerdown', e => { swiped = false; if (e.pointerType !== 'touch') px = e.clientX; });
+    stage.addEventListener('pointerup', e => { if (px != null && Math.abs(e.clientX - px) > 60) { swiped = true; go(e.clientX < px ? 1 : -1); } px = null; });
+    // tapping a slide's image opens the examples in the same full-screen viewer as the portfolio;
+    // closing the viewer leaves the slideshow on the example that was last shown
+    stage.addEventListener('click', e => {
+      const b = e.target.closest('.tier-open'); if (!b || swiped) return;
+      const withImg = list.map((x, k) => k).filter(k => list[k].image);           // viewer index -> slide index
+      open(+b.dataset.i, { list: withImg.map(k => ({ image: list[k].image })), grid: stage, tint: null,
+        onClose: (i) => { const s = withImg[i]; if (s != null && s !== cur) show(s, s < cur ? -1 : 1, false, true); } });
+    });
     return { render, show, get cur() { return cur; } };
   })();
 })();

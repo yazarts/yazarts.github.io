@@ -1,48 +1,31 @@
 {
   "artworks": [
     {
-      "image": "/images/artworks/giant-girl-lake.jpg",
-      "title": "Giant stone lady"
+      "image": "/images/artworks/giant-girl-lake.jpg"
     },
     {
-      "image": "/images/artworks/img1593.jpeg",
-      "title": "Art collaboration✨✨",
-      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+      "image": "/images/artworks/img1593.jpeg"
     },
     {
-      "image": "/images/artworks/img1452.jpeg",
-      "title": "Si-fi lady✨✨",
-      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+      "image": "/images/artworks/img1452.jpeg"
     },
     {
-      "image": "/images/artworks/img1504.jpeg",
-      "title": "Tunnel✨✨",
-      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+      "image": "/images/artworks/img1504.jpeg"
     },
     {
-      "image": "/images/artworks/img1600.jpeg",
-      "title": "Duck",
-      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+      "image": "/images/artworks/img1600.jpeg"
     },
     {
-      "image": "/images/artworks/Untitled192.jpg",
-      "title": "Skull lady✨✨",
-      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+      "image": "/images/artworks/Untitled192.jpg"
     },
     {
-      "image": "/images/artworks/placeholder-6.svg",
-      "title": "Placeholder 6",
-      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+      "image": "/images/artworks/placeholder-6.svg"
     },
     {
-      "image": "/images/artworks/placeholder-7.svg",
-      "title": "Placeholder 7",
-      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+      "image": "/images/artworks/placeholder-7.svg"
     },
     {
-      "image": "/images/artworks/placeholder-8.svg",
-      "title": "Placeholder 8",
-      "caption": "Placeholder — generated abstract image. Replace with a real artwork in the CMS."
+      "image": "/images/artworks/placeholder-8.svg"
     }
   ]
 }

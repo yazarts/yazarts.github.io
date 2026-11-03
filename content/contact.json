@@ -1,0 +1,22 @@
+{
+  "buttonLabel": "Not quite what you're looking for?",
+  "contactText": "Contact me directly via:",
+  "links": [
+    {
+      "label": "Instagram",
+      "url": "https://instagram.com/yazarts"
+    },
+    {
+      "label": "TikTok",
+      "url": "https://www.tiktok.com/@yaz.arts"
+    },
+    {
+      "label": "Reddit",
+      "url": "https://www.reddit.com/user/yaz_arts"
+    },
+    {
+      "label": "Ko-fi",
+      "url": "https://ko-fi.com/yazarts"
+    }
+  ]
+}

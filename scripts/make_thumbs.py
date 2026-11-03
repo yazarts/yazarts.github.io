@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deploy-time helper: small WebP previews for the portfolio/album/commission GRIDS, plus every image's size.
+"""Deploy-time helper: small WebP previews for the portfolio tiles, welcome background and commission slides, plus every image's size.
 
 Usage: python3 scripts/make_thumbs.py _site
 - Reads every JPG/PNG/WebP under <site>/images and writes <site>/thumbs/<same path>.webp (max 1200 px) for big files.

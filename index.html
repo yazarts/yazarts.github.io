@@ -7,7 +7,7 @@
 <meta name="description" content="yazarts: the digital art portfolio of @yazarts. Illustrations, characters and commissions.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="yazarts · portfolio">
-<meta property="og:description" content="Digital art and illustrations by @yazarts. Open for commissions.">
+<meta property="og:description" content="Character art and illustrations by @yazarts. Open for commissions.">
 <meta property="og:url" content="https://yazarts.github.io/">
 <meta property="og:image" content="https://yazarts.github.io/images/site/hero-cutout.png">
 <link rel="canonical" href="https://yazarts.github.io/">
@@ -29,48 +29,39 @@
     <nav id="menu" aria-label="Main">
       <a href="#home" data-nav="home">Home</a>
       <a href="#portfolio" data-nav="portfolio">Portfolio</a>
-      <a href="#albums" data-nav="albums">Albums</a>
       <a href="#commissions" data-nav="commissions">Commissions</a>
-      <a href="#about" data-nav="about">About</a>
-      <a href="#connect" data-nav="connect">Connect</a>
+      <a href="#contact" data-nav="contact">Contact</a>
     </nav>
   </div>
 </header>
 
 <main>
-  <section class="hero" id="home" aria-labelledby="heroTitle">
+  <section class="hero no-bg" id="home" aria-labelledby="heroTitle">
+    <div class="hero-bg" aria-hidden="true"><img id="heroBg" alt="" decoding="async" fetchpriority="high"></div>
+    <div class="hero-shade" aria-hidden="true"></div>
     <div class="hero-inner">
       <figure class="hero-figure"><img id="heroImg" src="images/site/hero-cutout.png" alt="" fetchpriority="high" decoding="async"></figure>
       <div class="hero-text">
         <h1 id="heroTitle">Welcome!</h1>
-        <p class="hero-sub" id="heroSubtitle">To my portfolio</p>
         <span class="hero-lines" aria-hidden="true"><i></i><i></i><i></i></span>
-        <p class="hero-intro" id="heroIntro">Digital art and illustrations by @yazarts</p>
-        <a class="hero-cta" href="#portfolio">See my work<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
+        <p class="hero-intro"><span id="heroIntro">Hi there! I'm yazarts! A self-taught digital artist based in [your city].</span>
+          <button class="see-more" type="button" id="bioBtn" aria-haspopup="dialog" aria-controls="bio">See more<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></p>
+        <a class="pill hero-cta" href="#portfolio">See my work<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
       </div>
     </div>
   </section>
 
-  <section class="section" id="portfolio" aria-labelledby="portfolio-h">
-    <div class="section-head fade"><h2 id="portfolio-h">Portfolio</h2><span class="rule"></span>
-      <span class="pf-nav"><button class="pf-arrow" type="button" id="pfPrev" aria-label="Scroll the portfolio left"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><button class="pf-arrow" type="button" id="pfNext" aria-label="Scroll the portfolio right"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></span>
-    </div>
+  <section class="section" id="portfolio" aria-label="Portfolio">
     <div class="pf-wrap fade" id="pfWrap">
-      <div class="pf-scroll at-start" id="pfScroll" tabindex="0" role="region" aria-label="Portfolio artworks, scroll sideways to see more">
+      <div class="pf-scroll" id="pfScroll" tabindex="0" role="region" aria-label="Artworks, scroll sideways to see more">
         <div class="pf-track" id="pfTrack"></div>
       </div>
+      <span class="pf-edge pf-edge-l" aria-hidden="true"></span><span class="pf-edge pf-edge-r" aria-hidden="true"></span>
+      <button class="pf-arrow pf-prev" type="button" id="pfPrev" aria-label="Scroll the artworks left"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="pf-arrow pf-next" type="button" id="pfNext" aria-label="Scroll the artworks right"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
       <span class="pf-hint" id="pfHint" aria-hidden="true"><span class="t-touch">Swipe</span><span class="t-mouse">Scroll</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
     </div>
     <p class="empty" id="empty" hidden>New artworks are coming soon.</p>
-  </section>
-
-  <section class="section albums" id="albums" aria-labelledby="albums-h">
-    <div class="section-head fade"><h2 id="albums-h">Albums</h2><span class="rule"></span></div>
-    <div class="album-grid" id="albumGrid"></div>
-    <div class="soon fade" id="albumsEmpty" hidden>
-      <span class="soon-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M3.5 15.5l4.6-4.6a1.6 1.6 0 0 1 2.3 0l5.1 5.1M14 14l1.6-1.6a1.6 1.6 0 0 1 2.3 0l2.6 2.6"/><circle cx="15.5" cy="8.5" r="1.4"/></svg></span>
-      <p><strong>Albums coming soon</strong><span>Collections of artworks, each with its own music.</span></p>
-    </div>
   </section>
 
   <section class="section comm" id="commissions" aria-labelledby="comm-h">
@@ -88,20 +79,34 @@
         <button class="t-arrow" type="button" id="tNext" aria-label="Next commission type"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
       </div>
     </div>
-  </section>
-
-  <section class="section about" id="about" aria-labelledby="about-h">
-    <div class="section-head fade"><h2 id="about-h">About</h2><span class="rule"></span></div>
-    <p class="about-text fade" id="aboutText"></p>
-  </section>
-
-  <section class="section connect" id="connect" aria-labelledby="connect-h">
-    <div class="section-head fade"><h2 id="connect-h">Connect</h2><span class="rule"></span></div>
-    <ul class="links fade" id="links"></ul>
+    <div class="contact fade" id="contact">
+      <button class="pill" type="button" id="contactBtn" aria-expanded="false" aria-controls="contactBox"><span id="contactLabel">Not quite what you&#39;re looking for?</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="contact-box" id="contactBox">
+        <div class="contact-inner">
+          <p class="contact-text" id="contactText">Contact me directly via:</p>
+          <ul class="socials" id="socials"></ul>
+        </div>
+      </div>
+    </div>
   </section>
 </main>
 
 <footer class="foot"><span>© <span id="yr"></span> <span id="footName">yazarts</span></span><span>All artwork © @yazarts</span></footer>
+
+<div class="bio" id="bio" role="dialog" aria-modal="true" aria-labelledby="bioTitle" hidden>
+  <div class="bio-bg" id="bioBg" aria-hidden="true"></div>
+  <article class="bio-card">
+    <figure class="bio-photo"><img id="bioPhoto" src="images/site/bio-photo-placeholder.svg" alt="Photo of yazarts" decoding="async"></figure>
+    <div class="bio-body" id="bioBody">
+      <p class="bio-kicker">Journal · about me</p>
+      <h2 id="bioTitle">A little about me</h2>
+      <div class="bio-text" id="bioText" aria-hidden="true"></div>
+      <div class="sr" id="bioFull"></div>
+      <button class="bio-skip" type="button" id="bioSkip">Show all</button>
+    </div>
+    <button class="lb-btn bio-close" type="button" id="bioClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </article>
+</div>
 
 <div class="lightbox" id="lb" role="dialog" aria-modal="true" aria-label="Artwork viewer" hidden>
   <div class="lb-bg" aria-hidden="true"></div>
@@ -112,45 +117,13 @@
     <button class="lb-btn lb-prev" id="lbPrev" aria-label="Previous artwork"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
     <button class="lb-btn lb-next" id="lbNext" aria-label="Next artwork"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
   </div>
-  <div class="lb-panel" id="lbPanel">
-    <div class="lb-text" id="lbText">
-      <h2 class="lb-title" id="lbTitle"></h2>
-      <p class="lb-cap" id="lbCap"></p>
-      <div class="lb-meta">
-        <button class="like" type="button" id="lbLike" aria-pressed="false" aria-label="Like"><svg aria-hidden="true"><use href="#i-heart"/></svg><span class="n" hidden></span></button>
-        <span class="views" id="lbViews" aria-label="Views"><svg aria-hidden="true"><use href="#i-eye"/></svg><span class="n" hidden></span></span>
-        <span class="lb-idx" id="lbIdx"></span>
-      </div>
-    </div>
-  </div>
   <button class="lb-btn lb-close" id="lbClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <p class="sr" id="lbLive" aria-live="polite"></p>
 </div>
 
-<div class="album-view" id="av" role="dialog" aria-modal="true" aria-labelledby="avName" hidden>
-  <div class="av-bg" aria-hidden="true"></div>
-  <div class="av-tint" id="avTint" aria-hidden="true"></div>
-  <div class="av-scroll" id="avScroll">
-    <div class="av-inner">
-      <header class="av-head">
-        <img class="av-cover" id="avCover" alt="">
-        <div class="av-titles"><span class="av-kicker">Album</span><h2 id="avName"></h2><span class="av-count" id="avCount"></span></div>
-      </header>
-      <p class="av-desc" id="avDesc"></p>
-      <div class="grid" id="avGrid"></div>
-      <p class="empty" id="avEmpty" hidden>Artworks for this album are coming soon.</p>
-    </div>
-  </div>
-  <button class="lb-btn av-sound" type="button" id="avSound" aria-pressed="true" aria-label="Mute album music" hidden><span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="mute-line" aria-hidden="true"></span></button>
-  <button class="lb-btn av-close" type="button" id="avClose" aria-label="Close album"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-</div>
-
 <audio id="bgAudio" loop preload="none"></audio>
-<audio id="albumAudio" loop preload="none"></audio>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.9"/></symbol>
-  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.3s-7.5-4.4-7.5-10.1A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.7-7.5 10.1-7.5 10.1Z"/></symbol>
   <symbol id="palette" viewBox="0 0 32 32"><path fill="currentColor" d="M16 3C8.8 3 3 8.4 3 15.1 3 21.7 8.6 27 15.4 27c1.6 0 2.6-1 2.6-2.3 0-.6-.2-1.1-.6-1.6-.4-.5-.6-1-.6-1.6 0-1.3 1-2.3 2.3-2.3h2.8c4.1 0 7.1-3.1 7.1-6.9C29 7.8 23.2 3 16 3Zm-7.5 13a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm4-5.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm7 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm4.5 5.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/></symbol>
 </svg>
 <noscript><p style="text-align:center;padding:2rem">Please enable JavaScript to view the portfolio.</p></noscript>
