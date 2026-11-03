@@ -6,7 +6,7 @@
     {
       "image": "/images/artworks/Untitled192.jpg",
       "name": "Portraits",
-      "price": "$1000000",
+      "price": "$25",
       "description": "A head-and-shoulders portrait of your character or OC, fully coloured and shaded, with a simple background.",
       "notes": "Example: replace with your own art."
     },
@@ -23,6 +23,7 @@
       "price": "$75",
       "description": "A full body illustration of your character, head to toe, fully rendered with lighting and a simple scene.",
       "notes": "Example: replace with your own art."
-    }
+    },
+    {}
   ]
 }
