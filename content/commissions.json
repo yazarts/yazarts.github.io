@@ -24,6 +24,10 @@
       "description": "A full body illustration of your character, head to toe, fully rendered with lighting and a simple scene.",
       "notes": "Example: replace with your own art."
     },
-    {}
+    {
+      "image": "/images/artworks/img1600.jpeg",
+      "name": "Animals",
+      "price": "50$"
+    }
   ]
 }
