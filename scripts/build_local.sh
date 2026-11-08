@@ -4,6 +4,7 @@
 set -e
 cd "$(dirname "$0")/.."; B=/tmp/yaz-build; rm -rf "$B"; mkdir -p "$B/site"
 cp -r index.html assets content images .nojekyll 404.html audio "$B/site/"
+cp manifest.webmanifest sw.js offline.html "$B/site/"
 python3 scripts/make_thumbs.py "$B/site" > /dev/null
 mkdir -p "$B/sub" && cp -r "$B/site" "$B/sub/yazarts"
 echo "built $B/site and $B/sub/yazarts"

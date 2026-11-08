@@ -244,6 +244,11 @@ html.js .pf-track.settled .brick{transition:none}
 @keyframes popIn{from{opacity:0;transform:translateY(10px) scale(.94)}to{opacity:1;transform:none}}
 
 .foot{max-width:1200px;margin:clamp(64px,9vw,110px) auto 0;padding:24px clamp(18px,4vw,40px) 32px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;color:var(--mute);font-size:.85rem}
+.install{flex:1 0 100%;display:flex;justify-content:flex-end;align-items:center;margin:0 0 8px}
+.install-btn{font-family:var(--head);font-weight:700;font-size:.85rem;color:#d7ebf8;background:rgba(111,156,196,.16);border:1px solid rgba(156,195,230,.5);border-radius:99px;padding:.4rem .9rem;cursor:pointer}
+.install-btn:hover{background:rgba(111,156,196,.28)}
+.install-ios{max-width:34rem;line-height:1.45;text-align:right}
+.offline-note{position:sticky;top:var(--nav-h);z-index:40;margin:0;padding:10px 16px;text-align:center;background:#152234;color:var(--soft);border-bottom:1px solid var(--line);font-size:.9rem}
 
 /* ---------- "See more": journal-style biography panel ---------- */
 .bio{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:clamp(12px,3vw,40px);overscroll-behavior:contain}

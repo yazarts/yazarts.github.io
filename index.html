@@ -14,6 +14,12 @@
 <link rel="canonical" href="https://yazarts.github.io/">
 <meta name="theme-color" content="#0c1420">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="yazarts">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
@@ -96,7 +102,13 @@
   </section>
 </main>
 
-<footer class="foot"><span>© <span id="yr"></span> <span id="footName">yazarts</span></span><span>All artwork © @yazarts</span></footer>
+<footer class="foot">
+  <p class="install" id="install" hidden>
+    <button type="button" class="install-btn" id="installBtn" hidden>Install</button>
+    <span class="install-ios" id="installIos" hidden>On iPhone or iPad, tap Share, then Add to Home Screen. Safari cannot install this for you.</span>
+  </p>
+  <span>© <span id="yr"></span> <span id="footName">yazarts</span></span><span>All artwork © @yazarts</span>
+</footer>
 
 <div class="bio" id="bio" role="dialog" aria-modal="true" aria-labelledby="bioTitle" hidden>
   <div class="bio-bg" id="bioBg" aria-hidden="true"></div>

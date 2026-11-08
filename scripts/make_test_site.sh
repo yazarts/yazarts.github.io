@@ -5,6 +5,7 @@
 set -e
 cd "$(dirname "$0")/.."; T=/tmp/yaz-test-site; rm -rf "$T"; mkdir -p "$T"
 cp -r content images .nojekyll 404.html "$T"/; [ -d audio ] && cp -r audio "$T"/; ln -s "$PWD/assets" "$T/assets"; ln -s "$PWD/index.html" "$T/index.html"
+ln -s "$PWD/sw.js" "$T/sw.js"; ln -s "$PWD/manifest.webmanifest" "$T/manifest.webmanifest"; ln -s "$PWD/offline.html" "$T/offline.html"
 mkdir -p "$T/audio/site"
 ffmpeg -loglevel error -y -f lavfi -i "sine=frequency=330:duration=8" -af volume=0.2 -q:a 6 "$T/audio/site/test-bg.mp3"
 python3 - "$T" <<'PY'
