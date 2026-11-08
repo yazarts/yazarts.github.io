@@ -57,7 +57,7 @@ content:
         type: string
       - name: bio
         label: See more · your story
-        description: Your biography. It types itself out letter by letter. Leave an empty line between paragraphs.
+        description: Your biography. The whole story fades in when the panel opens. Leave an empty line between paragraphs.
         type: text
       - name: bioPhoto
         label: See more · photo of you
@@ -104,7 +104,7 @@ content:
     fields:
       - name: open
         label: Commissions open?
-        description: Switch off to show the "closed" message instead.
+        description: On shows an "Available for commissions" badge. Off shows "Commissions closed". The site uses whatever you save here.
         type: boolean
       - name: openText
         label: Message when commissions are OPEN
@@ -112,37 +112,43 @@ content:
       - name: closedText
         label: Message when commissions are CLOSED
         type: text
+      - name: testimonial
+        label: Testimonial (optional)
+        description: A real quote from someone you have worked with. Leave this empty and nothing is shown. The site will not invent a quote.
+        type: text
+      - name: testimonialBy
+        label: Who said it (optional)
+        description: Their name, or however you want them credited. Shown only when the quote above is filled in.
+        type: string
       - name: tiers
         label: Commission types (slides)
-        description: One entry per slide. Add an entry for a new type, drag the handle to reorder, or remove one. The slides switch every 5 seconds; tapping a slide's image opens it full screen.
+        description: One entry per slide. Add an entry for a new type, drag the handle to reorder, or remove one. The slides switch every 5 seconds. Tapping a slide's photos opens them full screen, and the arrows stay inside that type.
         type: object
         list:
           collapsible:
             collapsed: true
-            summary: "{index}. {name} ({price})"
+            summary: "{index}. {name}"
         fields:
-          - name: image
-            label: Example image
-            description: Any shape; your own art works best.
+          - name: images
+            label: Example photos
+            description: Add as many as you like. Drag to reorder; the first photo is the front of the stack. Remove every photo to show only the text. The same photo cannot be added twice.
             type: image
             options:
               media: images
               path: images/commissions
+              multiple: true
+              unique: true
           - name: name
             label: Name
             description: e.g. Portraits, Half Body, Full Body Character
             type: string
             required: true
-          - name: price
-            label: Price
-            description: Shown in the outlined box, e.g. $25 or from $40
-            type: string
           - name: description
             label: Description
             type: text
           - name: notes
             label: Notes (optional)
-            description: Small text under the price.
+            description: Small text under the description.
             type: text
 
   # -------------------------------------------------------- Contact & socials
@@ -158,9 +164,13 @@ content:
       - name: contactText
         label: Text above the icons
         type: string
+      - name: email
+        label: Email address
+        description: Shown as an envelope that opens a new email. Type the address (name@example.com) or a mailto: link. Leave it empty to hide the envelope. This does not send anything by itself.
+        type: string
       - name: links
         label: Social links
-        description: Drag to reorder. Instagram, TikTok, Reddit, Ko-fi, X and YouTube get their own icons automatically.
+        description: Drag to reorder. Instagram, TikTok, Reddit, Ko-fi, X and YouTube get their own icons automatically. Email uses the Email address field above, not a link here.
         type: object
         list:
           collapsible:

@@ -14,6 +14,45 @@
   const clean = (p) => asset(p).split(/[?#]/)[0];
   const thumb = (p) => thumbs[clean(p)] || asset(p);
   const sizeOf = (p) => sizes[clean(p)] || null;          // [w, h] or null
+  // A tier's photos: the CMS list (first = front of the stack), plus a legacy single `image` if it isn't already there.
+  // Same file twice (old field + new list, or a repeated upload) is kept once, so a one-photo tier stays one photo.
+  function tierImages(t) {
+    if (!t || typeof t !== 'object') return [];
+    const raw = [];
+    if (Array.isArray(t.images)) raw.push(...t.images);
+    else if (typeof t.images === 'string') raw.push(t.images);
+    if (typeof t.image === 'string') raw.push(t.image);
+    const seen = new Set(), out = [];
+    for (const item of raw) {
+      const p = typeof item === 'string' ? item : (item && typeof item === 'object' ? (item.image || item.src || '') : '');
+      if (typeof p !== 'string' || !p.trim()) continue;
+      const key = clean(p);
+      if (!key || seen.has(key)) continue;
+      seen.add(key); out.push(p.trim());
+    }
+    return out;
+  }
+  // Bare address or mailto: (with or without a query). Anything else, including a made-up value, is not an address.
+  function mailAddress(v) {
+    if (v == null) return '';
+    let s = String(v).trim();
+    if (!s) return '';
+    const mailto = s.match(/^mailto:\s*([^?\s#]+)/i);
+    if (mailto) { try { s = decodeURIComponent(mailto[1]); } catch { s = mailto[1]; } }
+    else {
+      s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+      if (/[\/?#]/.test(s)) return '';   // a page address (tiktok.com/@name), not an email
+    }
+    s = s.trim();
+    return /^[^\s@<>"'`]+@[^\s@<>"'`]+\.[^\s@<>"'`]+$/.test(s) ? s : '';
+  }
+  const mailtoHref = (addr) => 'mailto:' + encodeURIComponent(addr).replace(/%40/g, '@');
+  const isEmailLink = (l) => {
+    if (!l) return false;
+    const label = String(l.label || '').trim().toLowerCase();
+    if (label === 'email' || label === 'e-mail' || label === 'mail') return true;
+    return !!mailAddress(l.url);
+  };
 
   $('#yr').textContent = new Date().getFullYear();
   requestAnimationFrame(() => document.body.classList.add('loaded'));
@@ -67,71 +106,38 @@
   heroImg.complete && heroImg.naturalWidth ? heroOk() : heroImg.addEventListener('load', heroOk);
   heroImg.addEventListener('error', () => hero.classList.add('no-img'));
 
-  // ---------- "See more": journal-style biography that types itself out like a streamed chat reply ----------
+  // ---------- "See more": the whole story is already there and fades in (no typing, no cursor) ----------
   const bio = (() => {
-    const box = $('#bio'), textEl = $('#bioText'), full = $('#bioFull'), body = $('#bioBody'), skip = $('#bioSkip');
-    let paras = [], raf = 0, lastFocus = null, closing = false;
-    const caret = document.createElement('span'); caret.className = 'caret'; caret.setAttribute('aria-hidden', 'true');
+    const box = $('#bio'), textEl = $('#bioText'), body = $('#bioBody');
+    let lastFocus = null, closing = false;
     function set(w) {
       if (w.bioTitle) $('#bioTitle').textContent = w.bioTitle;
       if (w.bioPhoto) $('#bioPhoto').src = asset(w.bioPhoto);
       $('#bioPhoto').closest('figure').hidden = w.bioPhoto === '' || w.bioPhoto === null;
-      if (w.bio != null) paras = String(w.bio).split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
-      full.innerHTML = paras.map(p => `<p>${esc(p)}</p>`).join('');
-    }
-    paras = [...full.querySelectorAll('p')].map(p => p.textContent);
-    function stop() { cancelAnimationFrame(raf); raf = 0; }
-    function finish() {
-      stop(); textEl.innerHTML = paras.map(p => `<p>${esc(p)}</p>`).join('');
-      textEl.lastElementChild?.appendChild(caret); box.classList.add('typed');
-    }
-    function type() {
-      stop(); textEl.innerHTML = ''; box.classList.remove('typed');
-      if (reduce || !paras.length) return finish();
-      // ~70 characters a second, with tiny pauses after punctuation, like a chat reply streaming in
-      let pi = 0, ci = 0, p = null, node = null, due = performance.now() + 380, last = due;
-      const CPS = 70;
-      const sc = getComputedStyle(body).overflowY === 'visible' ? body.closest('.bio-card') : body;     // phones: the whole card scrolls
-      const stick = () => sc.scrollHeight - sc.scrollTop - sc.clientHeight < 80;
-      const step = (now) => {
-        if (now < due) { raf = requestAnimationFrame(step); return; }
-        const follow = stick();
-        let budget = Math.max(1, Math.round((now - last) * CPS / 1000)); last = now;
-        while (budget-- > 0 && pi < paras.length) {
-          if (!p) { p = document.createElement('p'); node = document.createTextNode(''); p.append(node, caret); textEl.appendChild(p); }
-          const ch = paras[pi][ci++]; node.data += ch;
-          if (ci >= paras[pi].length) { pi++; ci = 0; p = null; due = now + 260; last = due; break; }
-          if (/[.!?]/.test(ch)) { due = now + 170; last = due; break; }
-          if (/[,;:]/.test(ch)) { due = now + 70; last = due; break; }
-        }
-        if (follow) sc.scrollTop = sc.scrollHeight;
-        if (pi >= paras.length) { finish(); return; }
-        raf = requestAnimationFrame(step);
-      };
-      raf = requestAnimationFrame(step);
+      const paras = w.bio == null ? [] : String(w.bio).split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+      textEl.innerHTML = paras.map(p => `<p>${esc(p)}</p>`).join('');
     }
     function open() {
       if (!box.hidden) return; lastFocus = document.activeElement; closing = false;
       box.hidden = false; lockScroll(1); body.scrollTop = 0; body.closest('.bio-card').scrollTop = 0;
-      requestAnimationFrame(() => box.classList.add('open'));
-      $('#bioClose').focus({ preventScroll: true }); type();
+      textEl.classList.remove('in');
+      requestAnimationFrame(() => { box.classList.add('open'); requestAnimationFrame(() => textEl.classList.add('in')); });
+      $('#bioClose').focus({ preventScroll: true });
     }
     function close() {
-      if (box.hidden || closing) return; closing = true; stop();
+      if (box.hidden || closing) return; closing = true;
       box.classList.remove('open');
-      setTimeout(() => { box.hidden = true; lockScroll(-1); closing = false; lastFocus?.focus?.({ preventScroll: true }); }, reduce ? 0 : 380);
+      setTimeout(() => { box.hidden = true; textEl.classList.remove('in'); lockScroll(-1); closing = false; lastFocus?.focus?.({ preventScroll: true }); }, reduce ? 0 : 380);
     }
     $('#bioBtn').addEventListener('click', open);
     $('#bioClose').addEventListener('click', close);
     $('#bioBg').addEventListener('click', close);
-    skip.addEventListener('click', finish);
-    textEl.addEventListener('click', () => raf && finish());          // tap the text to show it all at once
     addEventListener('keydown', e => {
       if (box.hidden) return;
       if (e.key === 'Escape') { e.preventDefault(); close(); }
       else if (e.key === 'Tab') { const f = [...box.querySelectorAll('button')].filter(x => x.offsetParent); const k = f.indexOf(document.activeElement); e.preventDefault(); f[(k + (e.shiftKey ? -1 : 1) + f.length) % f.length]?.focus(); }
     });
-    return { set, open, close, finish };
+    return { set, open, close };
   })();
 
   // ---------- contact: "Not quite what you're looking for?" reveals the social icons ----------
@@ -142,6 +148,7 @@
     x: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.7 3h3.1l-6.8 7.7L22 21h-6.3l-4.9-6.4L5.2 21H2.1l7.2-8.3L1.7 3h6.4l4.4 5.9L17.7 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11 14.5Z"/></svg>',
     tiktok: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3a4.8 4.8 0 0 0 4 4.3v3.2a8 8 0 0 1-4-1.2v6.2A5.7 5.7 0 1 1 10.9 10v3.3a2.5 2.5 0 1 0 2.4 2.5V3h3.3Z"/></svg>',
     youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8ZM9.8 15V9l5.8 3-5.8 3Z"/></svg>',
+    email: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 7l8 6 8-6"/></svg>',
     link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>',
   };
   const iconFor = (label, url) => {
@@ -158,8 +165,13 @@
     function set(c) {
       if (c.buttonLabel) $('#contactLabel').textContent = c.buttonLabel;
       if (c.contactText != null) $('#contactText').textContent = c.contactText;
-      $('#socials').innerHTML = (c.links || []).filter(l => l && l.url).map(l => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener me" aria-label="${esc((l.label || handle(l.url)) + ' ' + handle(l.url))}" title="${esc(l.label || '')}">
-        <span class="ico">${iconFor(l.label || '', l.url)}</span><span class="s-name">${esc(l.label || handle(l.url))}</span></a></li>`).join('');
+      const links = (c.links || []).filter(l => l && l.url);
+      // An address belongs on the envelope. Drop email-shaped entries here so the chain icon is not a second, broken copy.
+      const social = links.filter(l => !isEmailLink(l));
+      const addr = mailAddress(c.email) || links.filter(isEmailLink).map(l => mailAddress(l.url)).find(Boolean) || '';
+      const mail = addr ? `<li class="mail"><a href="${esc(mailtoHref(addr))}" aria-label="${esc('Email ' + addr)}" title="Email"><span class="ico">${ICON.email}</span><span class="s-name">Email</span></a></li>` : '';
+      $('#socials').innerHTML = social.map(l => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener me" aria-label="${esc((l.label || handle(l.url)) + ' ' + handle(l.url))}" title="${esc(l.label || '')}">
+        <span class="ico">${iconFor(l.label || '', l.url)}</span><span class="s-name">${esc(l.label || handle(l.url))}</span></a></li>`).join('') + mail;
     }
     function toggle(force) {
       const o = force ?? !wrapEl.classList.contains('open');
@@ -185,7 +197,7 @@
     const scroller = $('#pfScroll'), track = $('#pfTrack'), wrapEl = $('#pfWrap'), hint = $('#pfHint');
     let lastH = 0, lastW = 0;
     const big = (i) => art[i].featured === true || (i === 0 && innerWidth >= 720);   // phones: the first piece stays in the rows so the brick pattern shows
-    const html = (a, i) => `<div class="brick" data-i="${i}" style="--d:${Math.min(i, 10) * 0.06}s"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
+    const html = (a, i) => `<div class="brick" data-i="${i}" style="--d:${Math.min(i, 8) * 0.03}s"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
         <img src="${esc(thumb(a.image))}" alt="Artwork ${i + 1} by @yazarts" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" draggable="false"></button></div>`;
     function pack() {
       const H = track.clientHeight; if (!H || !art.length) return;
@@ -290,7 +302,7 @@
     track.addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) open(+t.dataset.i, { list: art, grid: track, tint: null }); });
     // entrance: the bricks rise in one after another the first time the band scrolls into view
     if (!reduce && 'IntersectionObserver' in window) {
-      const eio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { track.classList.add('in'); eio.disconnect(); setTimeout(() => track.classList.add('settled'), 1800); } }), { threshold: 0.15 });
+      const eio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { track.classList.add('in'); eio.disconnect(); setTimeout(() => track.classList.add('settled'), 700); } }), { threshold: 0.15 });
       eio.observe(track);
     } else track.classList.add('in', 'settled');
     return { render, pack, sync };
@@ -360,7 +372,7 @@
   }
   function place() { slides.forEach((s, k) => { s.style.transform = `translate3d(${(k - 1) * (W + GAP)}px,0,0)`; }); slides[0].hidden = slides[2].hidden = N() < 2; }
   function setOffset(x, ms = 0) { offset = x; track.style.transition = ms ? `transform ${ms}ms ${EASE}` : 'none'; track.style.transform = `translate3d(${x}px,0,0)`; }
-  function layout() { W = stage.clientWidth; place(); slides.forEach(s => fit(s.firstElementChild)); }
+  function layout() { W = stage.clientWidth; place(); slides.forEach(s => fit(s.firstElementChild)); lb.classList.toggle('one', N() < 2); }
 
   // ----- ambient tint: average colour of the artwork (weighted towards saturated pixels), always kept dark -----
   const tints = new Map();
@@ -602,46 +614,47 @@
     renderWelcome(w);
     art = (g.artworks || []).filter(a => a && a.image);
     pf.render();
-    const isOpen = C.open !== false;
+    const isOpen = C.open === true;
     $('#commKicker').classList.toggle('closed', !isOpen);
-    $('#commKicker').textContent = isOpen ? 'Open for commissions!' : 'Commissions closed for now';
+    $('#commKicker').textContent = isOpen ? 'Available for commissions' : 'Commissions closed';
     $('#commText').textContent = (isOpen ? C.openText : C.closedText) || ''; $('#commText').hidden = !$('#commText').textContent;
-    tiers = (C.tiers || []).filter(t => t && (t.name || t.image)); tierShow.render(tiers);
+    const quote = String(C.testimonial ?? '').trim(), by = String(C.testimonialBy ?? '').trim(), quoteEl = $('#quote');
+    if (quote) { $('#quoteText').textContent = quote; $('#quoteBy').textContent = by; $('#quoteBy').hidden = !by; quoteEl.hidden = false; }
+    else quoteEl.hidden = true;
+    tiers = (C.tiers || []).filter(t => t && (t.name || tierImages(t).length)); tierShow.render(tiers);
     contact.set(K);
     sound.setBg(s.music ? asset(s.music) : '');
   });
 
   // ---------- commissions: auto-advancing slideshow of tiers ----------
-  // Every 5 s the next tier comes in: the example image glides in from the right out of a soft blur while the old one
-  // drifts left and fades, the tier name rises in letter by letter, then the description, and the price box draws its outline.
-  // Pauses on hover, focus or touch; dots, arrows, swipe and ← → work; with reduced motion it never auto-advances.
+  // Every 5 s the next tier comes in. Several photos sit in an offset stack (one photo is just the photo; none leaves the text).
+  // Tapping the stack opens those photos only, at full resolution. Pauses on hover, focus, touch and while the viewer is open.
   const tierShow = (() => {
     const box = $('#tiers'), stage = $('#tiersStage'), dots = $('#tDots'), DUR = 5000;
     let list = [], cur = 0, elapsed = 0, last = 0, raf = 0, hover = false, focus = false, touchHold = 0, hidden = document.hidden;
     const letters = (t) => String(t || '').split(/(\s+)/).map(w => /^\s+$/.test(w) ? ' ' :
       `<span class="w">${[...w].map(c => `<span class="ch">${esc(c)}</span>`).join('')}</span>`).join('');
+    const stackButton = (imgs, name, eager) => {
+      const n = Math.min(imgs.length, 3), load = eager ? 'eager' : 'lazy';
+      const cards = imgs.slice(0, n).map((src, i) => `<span class="card c${i}" data-i="${i}"><img src="${esc(thumb(src))}" alt="" decoding="async" loading="${load}" draggable="false"></span>`).join('');
+      const label = imgs.length > 1 ? `View ${imgs.length} ${name || 'example'} photos full screen` : `View the ${name || 'example'} photo full screen`;
+      return `<button class="tier-open" type="button" aria-label="${esc(label)}"><span class="stack ${imgs.length > 1 ? 'multi n' + n : 'n1'}">${cards}</span></button>`;
+    };
     function render(t) {
-      list = t; box.hidden = !list.length; $('#commWhat').hidden = !list.length;
-      let vi = 0;
-      stage.innerHTML = list.map((t, k) => `<article class="tier" data-k="${k}" role="group" aria-roledescription="slide" aria-label="${k + 1} of ${list.length}: ${esc(t.name || '')}" aria-hidden="true">
-        <div class="tier-media">${t.image ? `<button class="tier-open" type="button" data-i="${vi++}" aria-label="View the ${esc(t.name || 'example')} example full screen"><img src="${esc(thumb(t.image))}" alt="${esc(t.name ? 'Example: ' + t.name : 'Example artwork')}" decoding="async" loading="${k ? 'lazy' : 'eager'}" draggable="false"></button>` : ''}</div>
+      list = t.map(x => ({ ...x, images: tierImages(x) })); box.hidden = !list.length; $('#commWhat').hidden = !list.length;
+      stage.innerHTML = list.map((t, k) => `<article class="tier${t.images.length ? '' : ' no-photos'}" data-k="${k}" role="group" aria-roledescription="slide" aria-label="${k + 1} of ${list.length}: ${esc(t.name || '')}" aria-hidden="true">
+        <div class="tier-media">${t.images.length ? stackButton(t.images, t.name, k === 0) : ''}</div>
         <div class="tier-text">
           <h3 class="tier-name">${letters(t.name)}</h3>
           ${t.description ? `<p class="tier-desc">${esc(t.description)}</p>` : ''}
-          ${t.price ? `<div class="tier-price"><svg aria-hidden="true"><rect rx="14" ry="14" pathLength="1"/></svg><span>${esc(t.price)}</span></div>` : ''}
           ${t.notes ? `<p class="tier-notes">${esc(t.notes)}</p>` : ''}
         </div></article>`).join('');
       stage.querySelectorAll('.tier-name').forEach(h => h.querySelectorAll('.ch').forEach((c, i) => c.style.setProperty('--i', i)));
       dots.innerHTML = list.length > 1 ? list.map((t, k) => `<button type="button" class="t-dot" data-k="${k}" aria-label="Show ${esc(t.name || 'tier ' + (k + 1))}"><i></i></button>`).join('') : '';
       $('#tiersCtrl').hidden = list.length < 2;
-      cur = 0; show(0, 0, true); sizeRects();
+      cur = 0; show(0, 0, true);
       if (!raf) { last = performance.now(); raf = requestAnimationFrame(tick); }
     }
-    function sizeRects() {     // the price outline is an SVG rect sized to its box, so it can "draw" itself in
-      stage.querySelectorAll('.tier-price').forEach(p => { const r = p.querySelector('rect'), w = p.offsetWidth, h = p.offsetHeight; if (!w) return;
-        r.setAttribute('x', 1.5); r.setAttribute('y', 1.5); r.setAttribute('width', Math.max(0, w - 3)); r.setAttribute('height', Math.max(0, h - 3)); });
-    }
-    addEventListener('resize', sizeRects); document.fonts?.ready.then(sizeRects);
     function show(k, dir = 1, first = false, instant = false) {
       if (!list.length) return; k = ((k % list.length) + list.length) % list.length;
       const els = [...stage.children], prev = els[cur], next = els[k];
@@ -652,7 +665,6 @@
       void next.offsetWidth; next.classList.add('on'); next.setAttribute('aria-hidden', 'false');
       cur = k; elapsed = 0;
       dots.querySelectorAll('.t-dot').forEach((d, i) => { d.classList.toggle('on', i === k); d.setAttribute('aria-current', i === k ? 'true' : 'false'); d.style.setProperty('--p', 0); });
-      sizeRects();
     }
     const paused = () => reduce || hover || focus || touchHold || hidden || list.length < 2 || !lb.hidden;
     function tick(t) {
@@ -683,13 +695,14 @@
     let px = null, swiped = false;
     stage.addEventListener('pointerdown', e => { swiped = false; if (e.pointerType !== 'touch') px = e.clientX; });
     stage.addEventListener('pointerup', e => { if (px != null && Math.abs(e.clientX - px) > 60) { swiped = true; go(e.clientX < px ? 1 : -1); } px = null; });
-    // tapping a slide's image opens the examples in the same full-screen viewer as the portfolio;
-    // closing the viewer leaves the slideshow on the example that was last shown
+    // tapping the stack opens only this tier's photos (original files). The slideshow stays on this tier and stays paused while the viewer is open.
     stage.addEventListener('click', e => {
       const b = e.target.closest('.tier-open'); if (!b || swiped) return;
-      const withImg = list.map((x, k) => k).filter(k => list[k].image);           // viewer index -> slide index
-      open(+b.dataset.i, { list: withImg.map(k => ({ image: list[k].image })), grid: stage, tint: null,
-        onClose: (i) => { const s = withImg[i]; if (s != null && s !== cur) show(s, s < cur ? -1 : 1, false, true); } });
+      const article = b.closest('.tier'), tier = list[+article.dataset.k], imgs = tier?.images || [];
+      if (!imgs.length) return;
+      const card = e.target.closest('.card');
+      const start = card && card.dataset.i != null ? Math.min(Math.max(0, +card.dataset.i), imgs.length - 1) : 0;
+      open(start, { list: imgs.map(image => ({ image })), grid: article, tint: null });
     });
     return { render, show, get cur() { return cur; } };
   })();

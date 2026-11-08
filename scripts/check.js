@@ -1,7 +1,7 @@
 // Local end-to-end check of the portfolio site (Playwright + system Chrome). Not deployed.
 // 1) bash scripts/make_test_site.sh && bash scripts/build_local.sh
 // 2) serve /tmp/yaz-test-site on :8091 and /tmp/yaz-build/sub on :8092
-// 3) node scripts/check.js [baseURL]   -> screenshots in ./screenshots (gitignored), named r5-*.png
+// 3) node scripts/check.js [baseURL]   -> screenshots in ./screenshots (gitignored), named r5-*.png and r6-*.png
 const { chromium } = require('playwright-core');
 const fs = require('fs'), path = require('path');
 const BASE = process.argv[2] || 'http://localhost:8091/';
@@ -31,6 +31,27 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
 }));
 
 (async () => {
+  const root = path.join(__dirname, '..');
+  const commFile = JSON.parse(fs.readFileSync(path.join(root, 'content/commissions.json'), 'utf8'));
+  const contactFile = JSON.parse(fs.readFileSync(path.join(root, 'content/contact.json'), 'utf8'));
+  const welcomeFile = JSON.parse(fs.readFileSync(path.join(root, 'content/welcome.json'), 'utf8'));
+  const pagesYml = fs.readFileSync(path.join(root, '.pages.yml'), 'utf8');
+  const migrated = [
+    ['Portraits', '/images/artworks/Untitled192.jpg', 'A head-and-shoulders portrait'],
+    ['Half Body', '/images/examples/half-body-example.jpg', 'Your character from the waist up'],
+    ['Full Body Character', '/images/examples/full-body-example.jpg', 'A full body illustration'],
+    ['Animals', '/images/artworks/img1164.jpeg', ''],
+  ];
+  ok(commFile.tiers.length === migrated.length && !JSON.stringify(commFile).includes('"price"') && !JSON.stringify(commFile).includes('"image"'), 'published tiers keep names and a single migrated photo, with prices and the old image field gone');
+  ok(migrated.every(([name, img, desc], i) => {
+    const t = commFile.tiers[i];
+    return t.name === name && Array.isArray(t.images) && t.images.length === 1 && t.images[0] === img && (desc ? t.description.startsWith(desc) : t.description == null);
+  }), 'each existing tier photo was kept once: ' + commFile.tiers.map(t => t.name + ' ' + (t.images || []).join(',')).join(' | '));
+  ok(contactFile.email === 'aitazouzabdellah@gmail.com' && contactFile.links.length === 4 && contactFile.links.some(l => l.url.includes('tiktok.com/@yaz.arts')) && !contactFile.links.some(l => /mail/i.test(l.label) || /gmail\.com|mailto:/i.test(l.url)), 'email field is the address already in the repo; social links are unchanged and not duplicated');
+  ok(/name: images[\s\S]*multiple: true[\s\S]*unique: true/.test(pagesYml) && !/name: price/.test(pagesYml) && /name: email/.test(pagesYml) && /name: testimonial\b/.test(pagesYml) && /name: testimonialBy/.test(pagesYml), 'CMS edits photos, email and an optional testimonial, and has no price field');
+  ok(commFile.open === true && commFile.testimonial == null && commFile.testimonialBy == null, 'commissions stay open and no testimonial was invented');
+  ok(welcomeFile.bio.startsWith("I'm a self-taught digital artist. I started out drawing just for fun, filling sketchbooks") && welcomeFile.bio.includes('Thank you for stopping by!') && welcomeFile.bioTitle === 'A little about me', 'bio text and heading are the ones already saved');
+
   const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
   for (const [w, h, mob, tag] of [[1280, 800, false, 'desktop'], [1024, 1366, true, 'ipad'], [390, 844, true, 'mobile']]) {
     const L = `[${tag} ${w}x${h}] `;
@@ -55,18 +76,22 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
     ok(!(await p.$('#about, #albums, #connect, #av, .album-grid')), L + 'About, Albums and old Connect sections removed');
     await shot(p, `r5-hero-${tag}.png`);
 
-    // ---- See more (bio)
-    await p.click('#bioBtn'); await p.waitForTimeout(1600);
-    const bio1 = await p.evaluate(() => ({ open: !document.querySelector('#bio').hidden && document.querySelector('#bio').classList.contains('open'), n: document.querySelector('#bioText').textContent.length,
-      full: document.querySelector('#bioFull').textContent.length, caret: !!document.querySelector('#bioText .caret'),
-      photo: (() => { const i = document.querySelector('#bioPhoto'), r = i.getBoundingClientRect(), t = document.querySelector('#bioText').getBoundingClientRect(); return { ok: i.complete && i.naturalWidth > 0, side: r.right <= t.left + 2, above: r.bottom <= t.top + 2 }; })() }));
-    ok(bio1.open && bio1.n > 5 && bio1.n < bio1.full && bio1.caret, L + `See more opens the bio and it is typing (${bio1.n}/${bio1.full} chars, cursor shown)`);
+    // ---- See more (bio): the whole story is present immediately and fades in
+    await p.click('#bioBtn'); await p.waitForTimeout(60);
+    const bio1 = await p.evaluate(() => {
+      const text = document.querySelector('#bioText'), card = document.querySelector('.bio-card').innerText;
+      const ps = [...text.querySelectorAll('p')].map(n => n.textContent);
+      const photo = (() => { const i = document.querySelector('#bioPhoto'), r = i.getBoundingClientRect(), t = text.getBoundingClientRect(); return { ok: i.complete && i.naturalWidth > 0, side: r.right <= t.left + 2, above: r.bottom <= t.top + 2 }; })();
+      return { open: !document.querySelector('#bio').hidden && document.querySelector('#bio').classList.contains('open'), ps, card, caret: !!document.querySelector('.caret'),
+        kicker: !!document.querySelector('.bio-kicker'), skip: !!document.querySelector('#bioSkip, .bio-skip'), photo, op: getComputedStyle(text).opacity };
+    });
+    ok(bio1.open && bio1.ps.length >= 4 && bio1.ps[0].startsWith("I'm a self-taught digital artist") && bio1.ps.join('').includes('Thank you for stopping by'), L + `See more shows the complete story at once (${bio1.ps.length} paragraphs)`);
+    ok(!bio1.caret && !bio1.kicker && !bio1.skip && !/journal/i.test(bio1.card) && !/show all/i.test(bio1.card), L + 'no cursor, no "Journal · about me", no "Show all"');
     ok(bio1.photo.ok && (w >= 720 ? bio1.photo.side : bio1.photo.above), L + 'bio photo ' + (w >= 720 ? 'beside' : 'above') + ' the text');
-    await shot(p, `r5-bio-open-${tag}.png`);
     await p.waitForTimeout(700);
-    const n2 = await p.$eval('#bioText', e => e.textContent.length); ok(n2 > bio1.n, L + `text keeps streaming (${bio1.n} -> ${n2})`);
-    await p.click('#bioSkip'); await p.waitForTimeout(200);
-    ok(await p.$eval('#bioText', e => e.textContent.length) === bio1.full, L + '"Show all" completes the text');
+    const bioOp = await p.$eval('#bioText', e => getComputedStyle(e).opacity);
+    ok(Number(bioOp) > 0.95 && Number(bio1.op) < 0.98, L + `story fades in (opacity ${bio1.op} -> ${bioOp})`);
+    await shot(p, `r6-bio-${tag}.png`);
     await p.keyboard.press('Escape'); await p.waitForTimeout(600);
     ok(await p.$eval('#bio', e => e.hidden), L + 'bio closes (Esc)');
     await p.click('#bioBtn'); await p.waitForTimeout(500); await p.click('#bioClose'); await p.waitForTimeout(600);
@@ -90,6 +115,16 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
     const kinds = [pf.rat.some(r => r > 1.2), pf.rat.some(r => r > 0.9 && r < 1.1), pf.rat.some(r => r < 0.86)];
     ok(kinds.every(Boolean) && pf.fit, L + 'varied tile shapes (wide, square, tall) cropped with object-fit:cover: ' + pf.rat.join(' '));
     ok(pf.mask === 'none' && (pf.snap === 'none' || !pf.snap), L + 'no mask-image / scroll-snap on the scroller');
+    const tile = '.brick[data-i="1"] .tile';
+    const tileBox = () => p.$eval(tile, el => { const r = el.getBoundingClientRect(), img = el.querySelector('img'); return { w: Math.round(r.width), h: Math.round(r.height), tr: getComputedStyle(img).transform, filter: getComputedStyle(el).filter, sh: getComputedStyle(el).boxShadow }; });
+    const beforeH = await tileBox();
+    await p.hover(tile).catch(() => {}); await p.waitForTimeout(350);
+    const afterH = await tileBox();
+    ok(afterH.w === beforeH.w && afterH.h === beforeH.h && (afterH.tr === 'none' || afterH.tr === 'matrix(1, 0, 0, 1, 0, 0)') && afterH.filter === 'none', L + 'hover does not resize, scale or blur the artwork');
+    if (!mob) {
+      ok(/111,\s*156,\s*196|156,\s*195,\s*230/.test(afterH.sh), L + 'fine pointer gets a soft blue glow');
+      await (await p.$('.brick[data-i="1"]')).screenshot({ path: path.join(OUT, 'r6-hover-glow-desktop.png') });
+    }
     await shot(p, `r5-portfolio-${tag}.png`);
     const sm = await smooth(p);
     ok(sm.max < 60 && !sm.shifted, L + `scrolling the band: longest frame ${sm.max.toFixed(1)} ms (avg ${sm.avg.toFixed(1)}), no tile moved: ${!sm.shifted}`);
@@ -134,31 +169,88 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
     ok(await p.$eval('#lb', e => e.hidden), L + 'viewer closes');
     ok(hits.length === 0, L + 'no like/view counter requests (counter code removed)');
 
-    // ---- commissions
-    await go(p, '#tiers', 'center'); await p.mouse.move(2, 2).catch(() => {}); await p.waitForTimeout(2600);
+    // ---- commissions: multi-photo stack, single photo, no prices, viewer stays inside the tier
+    await go(p, '#tiers', 'center'); await p.hover('#tiers').catch(() => {}); await p.waitForTimeout(400);
+    await p.click('#tDots .t-dot[data-k="0"]'); await p.waitForTimeout(500);
     const tiers = await p.$$eval('.tier', t => t.map(x => x.querySelector('.tier-name')?.textContent.trim()));
-    ok(tiers.length === 3, L + 'tiers: ' + tiers.join(' | '));
+    ok(tiers.length === 4 && tiers[0] === 'Portraits' && tiers[3] === 'Animals', L + 'tiers: ' + tiers.join(' | '));
+    await go(p, '#comm-h', 'center'); await p.waitForTimeout(450);
+    const badge = await p.$eval('#commKicker', e => ({ text: e.textContent.trim(), closed: e.classList.contains('closed'), radius: getComputedStyle(e).borderRadius }));
+    ok(badge.text === 'Available for commissions' && !badge.closed && parseFloat(badge.radius) > 20, L + 'open state shows the Available badge');
+    ok(await p.$eval('#quote', e => e.hidden), L + 'no testimonial until one is saved');
+    const fade = await p.$eval('#commissions .section-head', e => ({ inn: e.classList.contains('in'), op: getComputedStyle(e).opacity, dur: parseFloat(getComputedStyle(e).transitionDuration), filter: getComputedStyle(e).filter }));
+    ok(fade.inn && fade.op === '1' && fade.dur > 0 && fade.dur <= 0.45 && fade.filter === 'none', L + `section fade is fast (${fade.dur}s) and has no blur`);
+    if (tag !== 'ipad') await (await p.$('.comm-top')).screenshot({ path: path.join(OUT, `r6-badge-${tag}.png`) });
+    await go(p, '#tiers', 'center'); await p.waitForTimeout(200);
     const curTier = () => p.$$eval('.tier', t => t.findIndex(x => x.classList.contains('on')));
-    const k0 = await curTier();
-    await p.click(`.tier.on .tier-open`); await p.waitForTimeout(1300);
-    const tv = await p.evaluate(() => { const cur = [...document.querySelectorAll('.lb-slide')].find(s => s.getAttribute('aria-hidden') === 'false').querySelector('img'); return { open: !document.querySelector('#lb').hidden, src: cur.currentSrc, live: document.querySelector('#lbLive').textContent }; });
-    ok(tv.open && /images\/examples\//.test(tv.src) && !/thumbs\//.test(tv.src), L + `tapping a tier image opens it full screen (${tv.src.split('/').pop()}, ${tv.live})`);
-    if (!mob) { await p.keyboard.press('ArrowRight'); await p.waitForTimeout(700); }
+    const stack = await p.evaluate(() => {
+      const t = document.querySelector('.tier.on');
+      const cards = [...t.querySelectorAll('.card')];
+      const box = t.querySelector('.tier-open').getBoundingClientRect();
+      return { n: cards.length, multi: t.querySelector('.stack').classList.contains('multi'),
+        srcs: cards.map(c => c.querySelector('img').getAttribute('src')),
+        pos: cards.map(c => { const r = c.getBoundingClientRect(); return [Math.round(r.left - box.left), Math.round(r.top - box.top)]; }),
+        price: !!document.querySelector('.tier-price'), text: document.querySelector('#tiers').innerText, desc: !!t.querySelector('.tier-desc') };
+    });
+    ok(stack.n === 3 && stack.multi && new Set(stack.srcs).size === 3 && stack.srcs[0].includes('Untitled192'), L + 'front photo is the existing portrait, two different photos peek behind: ' + stack.srcs.map(s => s.split('/').pop()).join(' '));
+    const gap = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    ok(gap(stack.pos[0], stack.pos[1]) > 24 && gap(stack.pos[0], stack.pos[2]) > 24, L + `stack layers are offset ${JSON.stringify(stack.pos)}`);
+    ok(!stack.price && stack.desc && !/\$\s?\d|\d\s?\$/.test(stack.text), L + 'descriptions stay, no price tag is rendered');
+    await (await p.$('#tiers')).screenshot({ path: path.join(OUT, `r6-tier-stack-${tag}.png`) });
+    await p.click('.tier.on .card.c0'); await p.waitForTimeout(1400);
+    const tv = await p.evaluate(() => { const cur = [...document.querySelectorAll('.lb-slide')].find(s => s.getAttribute('aria-hidden') === 'false').querySelector('img');
+      return { open: !document.querySelector('#lb').hidden, src: cur.currentSrc, nat: [cur.naturalWidth, cur.naturalHeight], live: document.querySelector('#lbLive').textContent, one: document.querySelector('#lb').classList.contains('one') }; });
+    ok(tv.open && !tv.one && /Artwork 1 of 3/.test(tv.live) && /Untitled192/.test(tv.src) && !/thumbs\//.test(tv.src) && tv.nat[0] > 800, L + `tap opens the original (${tv.src.split('/').pop()} ${tv.nat.join('x')}, ${tv.live})`);
+    if (mob && w < 900) {
+      const cdp = await c.newCDPSession(p);
+      const y = Math.round(h / 2);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: w - 24, y }] });
+      for (let k = 1; k <= 8; k++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: w - 24 - k * 36, y }] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    } else await p.keyboard.press('ArrowRight');
+    await p.waitForTimeout(800);
+    const tv2 = await p.evaluate(() => { const cur = [...document.querySelectorAll('.lb-slide')].find(s => s.getAttribute('aria-hidden') === 'false').querySelector('img'); return { src: cur.currentSrc, live: document.querySelector('#lbLive').textContent }; });
+    ok(/Artwork 2 of 3/.test(tv2.live) && /giant-girl-lake/.test(tv2.src) && !/thumbs\//.test(tv2.src) && tv2.src !== tv.src, L + `browse stays inside the tier (${tv2.src.split('/').pop()}, ${tv2.live})`);
+    await shot(p, `r6-tier-viewer-${tag}.png`);
+    await p.waitForTimeout(5200);
+    ok(await curTier() === 0, L + 'carousel stays paused on this tier while the viewer is open');
     await p.click('#lbClose'); await p.waitForTimeout(900);
-    if (!mob) ok(await curTier() === (k0 + 1) % 3, L + 'closing the viewer leaves the slideshow on the example last viewed');
+    ok(await curTier() === 0 && await p.$eval('#lb', e => e.hidden), L + 'closing the viewer leaves the slideshow on the same tier');
+    await p.click('#tDots .t-dot[data-k="1"]'); await p.waitForTimeout(900);
+    const single = await p.evaluate(() => { const t = document.querySelector('.tier.on'); return { name: t.querySelector('.tier-name').textContent.trim(), n: t.querySelectorAll('.card').length, multi: t.querySelector('.stack').classList.contains('multi'), desc: !!t.querySelector('.tier-desc') }; });
+    ok(single.name === 'Half Body' && single.n === 1 && !single.multi && single.desc, L + 'a single uploaded photo is one picture, not a fake stack');
+    await p.click('.tier.on .tier-open'); await p.waitForTimeout(900);
+    ok(await p.evaluate(() => document.querySelector('#lb').classList.contains('one') && /Artwork 1 of 1/.test(document.querySelector('#lbLive').textContent) && /half-body-example/.test(document.querySelector('.lb-slide[aria-hidden="false"] img').currentSrc)), L + 'one photo opens full screen with no extra slides');
+    const soloSrc = await p.$eval('.lb-slide[aria-hidden="false"] img', e => e.currentSrc);
+    await p.keyboard.press('ArrowRight'); await p.waitForTimeout(400);
+    ok(await p.$eval('.lb-slide[aria-hidden="false"] img', e => e.currentSrc) === soloSrc, L + 'arrow does not leave a single-photo tier');
+    await p.click('#lbClose'); await p.waitForTimeout(700);
+    if (!mob) {
+      await p.evaluate(() => document.activeElement && document.activeElement.blur());
+      await p.mouse.move(2, 2); await p.waitForTimeout(400);
+      const p0 = await p.$eval('.t-dot.on', e => parseFloat(e.style.getPropertyValue('--p')) || 0);
+      await p.waitForTimeout(1400);
+      const p1 = await p.$eval('.t-dot.on', e => parseFloat(e.style.getPropertyValue('--p')) || 0);
+      ok(p1 > p0 + 0.15, L + `carousel runs again after the viewer closes (${p0.toFixed(2)} -> ${p1.toFixed(2)})`);
+    }
     await go(p, '#contact', 'center'); await p.waitForTimeout(700);
     const cb = await p.evaluate(() => { const b = document.querySelector('#contactBtn'), cta = document.querySelector('.hero-cta'), bs = getComputedStyle(b), cs = getComputedStyle(cta);
       return { label: b.textContent.trim(), same: bs.borderRadius === cs.borderRadius && bs.borderTopColor === cs.borderTopColor && bs.fontFamily === cs.fontFamily, expanded: b.getAttribute('aria-expanded'),
         h: document.querySelector('.contact-inner').getBoundingClientRect().height, below: b.getBoundingClientRect().top > document.querySelector('#tiers').getBoundingClientRect().bottom }; });
     ok(cb.label === "Not quite what you're looking for?" && cb.same && cb.below, L + 'pill button "' + cb.label + '" under the slides, styled like "See my work"');
     await p.click('#contactBtn'); await p.waitForTimeout(900);
-    const icons = await p.evaluate(() => ({ text: document.querySelector('#contactText').textContent, links: [...document.querySelectorAll('#socials a')].map(a => a.href), h: document.querySelector('.contact-inner').getBoundingClientRect().height }));
+    const icons = await p.evaluate(() => ({ text: document.querySelector('#contactText').textContent, h: document.querySelector('.contact-inner').getBoundingClientRect().height,
+      links: [...document.querySelectorAll('#socials a')].map(a => ({ href: a.getAttribute('href'), label: a.querySelector('.s-name').textContent, svg: a.querySelector('.ico svg').outerHTML, target: a.getAttribute('target') })) }));
     ok(cb.h < 2 && icons.h > 60 && icons.text === 'Contact me directly via:', L + 'button reveals "Contact me directly via:" + icons');
     const want = ['instagram.com/yazarts', 'tiktok.com/@yaz.arts', 'reddit.com/user/yaz_arts', 'ko-fi.com/yazarts'];
-    ok(want.every(u => icons.links.some(l => l.includes(u))), L + 'icons link to ' + icons.links.join(', '));
+    const social = icons.links.filter(l => !l.href.startsWith('mailto:'));
+    const mails = icons.links.filter(l => l.href.startsWith('mailto:'));
+    ok(want.every(u => social.some(l => l.href.includes(u))) && social.every(l => l.target === '_blank'), L + 'social icons still open: ' + social.map(l => l.href).join(', '));
+    ok(mails.length === 1 && mails[0].href === 'mailto:aitazouzabdellah@gmail.com' && mails[0].label === 'Email' && mails[0].target == null && /<rect /.test(mails[0].svg) && !/M10 14a5/.test(mails[0].svg), L + 'envelope mailto, not the chain icon, and the page does not send mail');
+    ok(!icons.links.some(l => /https?:\/\/[^/]*@/.test(l.href)), L + 'the broken https:// email link is gone');
     await go(p, '#commissions'); await p.waitForTimeout(500);
     await (await p.$('#commissions')).screenshot({ path: path.join(OUT, `r5-commissions-${tag}.png`) });
-    if (!mob) { await go(p, '#contact', 'end'); await p.waitForTimeout(300); await shot(p, `r5-contact-${tag}.png`); }
+    await go(p, '#contact', 'center'); await p.waitForTimeout(300); await shot(p, `r6-contact-${tag}.png`);
 
     // ---- music + nav
     const mus = await p.evaluate(() => ({ shown: !document.querySelector('#musicBtn').hidden, src: document.querySelector('#bgAudio').src }));
@@ -185,14 +277,107 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
   // reduced motion: tiers stay put, bio appears at once
   { const rc = await b.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' }); const rp = await rc.newPage();
     await rp.goto(BASE, { waitUntil: 'load' }); await rp.waitForTimeout(800); await rp.click('#bioBtn'); await rp.waitForTimeout(200);
-    ok(await rp.evaluate(() => document.querySelector('#bioText').textContent.length === document.querySelector('#bioFull').textContent.length), '[reduced motion] bio text shown at once');
+    ok(await rp.evaluate(() => { const t = document.querySelector('#bioText'); return t.textContent.includes("I'm a self-taught digital artist") && t.textContent.includes('Thank you for stopping by') && !document.querySelector('.caret, .bio-kicker, #bioSkip') && getComputedStyle(t).opacity === '1'; }), '[reduced motion] complete bio is shown at once, with no cursor');
     await rp.keyboard.press('Escape'); await go(rp, '#commissions'); await rp.waitForTimeout(6000);
     ok(await rp.$$eval('.tier', t => t.findIndex(x => x.classList.contains('on'))) === 0, '[reduced motion] tiers stay put'); await rc.close(); }
   // sub-path
   { const { c, p, errs } = await ctx(b, 1280, 800, false);
     await p.goto(SUB, { waitUntil: 'load' }); await p.waitForTimeout(2500); await go(p, '#commissions'); await p.waitForTimeout(800);
     const r = await p.evaluate(() => ({ hero: document.querySelector('#heroImg').naturalWidth, bg: document.querySelector('#heroBg').naturalWidth, bricks: [...document.querySelectorAll('.brick img')].filter(i => i.complete && i.naturalWidth).length, tier: [...document.querySelectorAll('.tier img')].filter(i => i.naturalWidth).length }));
-    ok(r.hero > 0 && r.bg > 0 && r.bricks >= 6 && r.tier >= 1 && !errs.length, `[sub-path ${SUB}] hero, background, ${r.bricks} tiles, tier images load` + (errs.length ? ' errors: ' + errs.join(' || ') : ''));
+    ok(r.hero > 0 && r.bg > 0 && r.bricks >= 6 && r.tier >= 4 && !errs.length, `[sub-path ${SUB}] hero, background, ${r.bricks} tiles, tier images load` + (errs.length ? ' errors: ' + errs.join(' || ') : ''));
     await c.close(); }
+  // empty tier, legacy single image, duplicate path, and a price that must not render
+  { const { c, p, errs } = await ctx(b, 1280, 800, false);
+    await p.route('**/content/commissions.json', async r => { const res = await r.fetch(); const j = await res.json();
+      j.tiers = [
+        { name: 'Solo', images: ['/images/examples/half-body-example.jpg'], description: 'One image.' },
+        { name: 'None yet', images: [], description: 'No photo yet.', notes: 'Text only.' },
+        { name: 'Many', images: ['/images/artworks/giant-girl-lake.jpg', '/images/artworks/img1452.jpeg', '/images/artworks/img1504.jpeg', '/images/artworks/img1600.jpeg'], description: 'Several.' },
+        { name: 'Legacy', image: '/images/artworks/img1164.jpeg', images: ['/images/artworks/img1164.jpeg'], price: '$999', description: 'Old shape.' },
+      ];
+      r.fulfill({ json: j }); });
+    await p.goto(BASE, { waitUntil: 'load' }); await p.waitForTimeout(1200); await go(p, '#tiers', 'center'); await p.hover('#tiers');
+    const rows = await p.$$eval('.tier', t => t.map(el => ({ name: el.querySelector('.tier-name').textContent.trim(), cards: el.querySelectorAll('.card').length, multi: !!el.querySelector('.stack.multi'), empty: el.classList.contains('no-photos'), open: !!el.querySelector('.tier-open'), price: !!el.querySelector('.tier-price'), desc: el.querySelector('.tier-desc')?.textContent || '' })));
+    ok(rows[0].name === 'Solo' && rows[0].cards === 1 && !rows[0].multi, '[empty/single] one image, no stack');
+    ok(rows[1].name === 'None yet' && rows[1].empty && !rows[1].open && rows[1].desc === 'No photo yet.', '[empty/single] no photos: text only, nothing to tap');
+    ok(rows[2].cards === 3 && rows[2].multi, '[empty/single] four photos still show three offset layers');
+    ok(rows[3].name === 'Legacy' && rows[3].cards === 1 && !rows[3].multi && !rows[3].price && !/\$999|\$25|\$50|\$75/.test(await p.$eval('#tiers', e => e.innerText)), '[legacy] old image field is kept once and the price is not shown');
+    await p.click('#tDots .t-dot[data-k="2"]'); await p.waitForTimeout(700);
+    const peek = await p.evaluate(() => {
+      const card = document.querySelector('.tier.on .card.c2'); if (!card) return null;
+      const r = card.getBoundingClientRect();
+      for (let y = r.top + 2; y < r.bottom - 2; y += 4) for (let x = r.left + 2; x < r.right - 2; x += 4) {
+        const hit = document.elementFromPoint(x, y); if (hit && card.contains(hit)) return [x, y];
+      }
+      return null;
+    });
+    ok(!!peek, '[stack] a back photo stays visible to tap');
+    if (peek) {
+      await p.mouse.click(peek[0], peek[1]); await p.waitForTimeout(900);
+      ok(/Artwork 3 of 4/.test(await p.$eval('#lbLive', e => e.textContent)) && /img1504/.test(await p.$eval('.lb-slide[aria-hidden="false"] img', e => e.currentSrc)), '[stack] tapping a back photo opens that photo');
+      await p.keyboard.press('ArrowRight'); await p.waitForTimeout(500);
+      ok(/Artwork 4 of 4/.test(await p.$eval('#lbLive', e => e.textContent)) && /img1600/.test(await p.$eval('.lb-slide[aria-hidden="false"] img', e => e.currentSrc)) && !/thumbs\//.test(await p.$eval('.lb-slide[aria-hidden="false"] img', e => e.currentSrc)), '[stack] the fourth photo is in the viewer even though only three layers show');
+      await p.click('#lbClose'); await p.waitForTimeout(400);
+    }
+    ok(!errs.length, '[empty/single] no errors ' + errs.join(' ')); await c.close(); }
+  // email field: bare address, mailto with a query, empty, invalid, and a leftover social entry
+  { const { c, p, errs } = await ctx(b, 390, 844, true);
+    const cases = [
+      [{ email: 'ada@example.com' }, 'mailto:ada@example.com'],
+      [{ email: 'mailto:ada@example.com?subject=Hello' }, 'mailto:ada@example.com'],
+      [{ email: '  ' }, null],
+      [{ email: 'not an email' }, null],
+      [{ email: '', linksExtra: [{ label: 'Email', url: 'https://someone@example.com' }] }, 'mailto:someone@example.com'],
+      [{ email: 'kept@example.com', linksExtra: [{ label: 'Email', url: 'mailto:other@example.com' }] }, 'mailto:kept@example.com'],
+    ];
+    for (const [over, expectHref] of cases) {
+      await p.unroute('**/content/contact.json').catch(() => {});
+      await p.route('**/content/contact.json', async r => { const res = await r.fetch(); const j = await res.json();
+        const extra = over.linksExtra || [];
+        j.email = over.email; j.links = [...(j.links || []).filter(l => !/mail/i.test(l.label)), ...extra];
+        r.fulfill({ json: j }); });
+      await p.goto(BASE, { waitUntil: 'load' }); await p.waitForTimeout(700);
+      await p.click('#contactBtn'); await p.waitForTimeout(300);
+      const got = await p.evaluate(() => [...document.querySelectorAll('#socials a')].map(a => ({ href: a.getAttribute('href'), svg: a.querySelector('svg').outerHTML, label: a.querySelector('.s-name').textContent })));
+      const mails = got.filter(a => a.href.startsWith('mailto:'));
+      const socials = got.filter(a => !a.href.startsWith('mailto:'));
+      ok(expectHref ? mails.length === 1 && mails[0].href === expectHref && /<rect /.test(mails[0].svg) && mails[0].label === 'Email' : mails.length === 0, `[email ${JSON.stringify(over.email)}] ${expectHref || 'hidden'} (got ${mails.map(m => m.href).join(',') || 'none'})`);
+      ok(socials.length === 4 && socials.map(a => a.label).join(',') === 'Instagram,TikTok,Reddit,Ko-fi' && mails.length === (expectHref ? 1 : 0), `[email ${JSON.stringify(over.email)}] socials stay and email is not listed twice`);
+    }
+    ok(!errs.length, '[email] no console errors ' + errs.join(' ')); await c.close(); }
+  // a coarse pointer gets no glow and no size change; a fine pointer gets the glow only
+  { const { c, p, errs } = await ctx(b, 1024, 1366, true);
+    await p.goto(BASE, { waitUntil: 'load' }); await p.waitForTimeout(1200); await go(p, '#portfolio'); await p.waitForTimeout(600);
+    const cdp = await c.newCDPSession(p);
+    const measure = (sel) => p.$eval(sel, el => { const r = el.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), tr: getComputedStyle(el.querySelector('img')).transform, sh: getComputedStyle(el).boxShadow, mask: (getComputedStyle(document.querySelector('#pfScroll')).maskImage || 'none'), bf: getComputedStyle(document.querySelector('#pfScroll')).backdropFilter || 'none' }; });
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'hover', value: 'none' }, { name: 'pointer', value: 'coarse' }] });
+    const rest = await measure('.brick[data-i="1"] .tile');
+    await p.hover('.brick[data-i="1"] .tile'); await p.waitForTimeout(250);
+    const coarse = await measure('.brick[data-i="1"] .tile');
+    ok(coarse.w === rest.w && coarse.h === rest.h && coarse.tr === rest.tr && coarse.sh === rest.sh && coarse.mask === 'none' && (coarse.bf === 'none' || coarse.bf === ''), '[touch] no hover glow, no resize, no mask or backdrop on the scroller');
+    ok(!errs.length, '[hover] no errors ' + errs.join(' ')); await c.close(); }
+  { const c = await b.newContext({ viewport: { width: 1280, height: 800 }, javaScriptEnabled: false }); const p = await c.newPage();
+    await p.goto(BASE, { waitUntil: 'domcontentloaded' });
+    const vis = await p.evaluate(() => ({ js: document.documentElement.classList.contains('js'), hero: getComputedStyle(document.querySelector('.hero-text')).opacity, title: document.querySelector('#heroTitle').textContent, head: getComputedStyle(document.querySelector('#comm-h')).opacity, badge: document.querySelector('#commKicker').textContent.trim(), quote: document.querySelector('#quote').hidden }));
+    ok(!vis.js && vis.hero === '1' && vis.head === '1' && vis.title === 'Welcome!' && vis.badge === 'Available for commissions' && vis.quote, '[no js] welcome, heading and badge stay visible; quote stays hidden');
+    await c.close(); }
+  { const { c, p, errs } = await ctx(b, 1280, 800, false);
+    const fulfill = (mutate) => p.route('**/content/commissions.json', async r => { const j = await (await r.fetch()).json(); mutate(j); r.fulfill({ json: j }); });
+    await fulfill(j => { j.open = false; j.testimonial = '   '; j.testimonialBy = 'Someone'; });
+    await p.goto(BASE, { waitUntil: 'load' }); await p.waitForTimeout(800); await go(p, '#commissions'); await p.waitForTimeout(300);
+    const closed = await p.evaluate(() => ({ badge: document.querySelector('#commKicker').textContent.trim(), on: document.querySelector('#commKicker').classList.contains('closed'), quote: document.querySelector('#quote').hidden, text: document.querySelector('#commText').textContent }));
+    ok(closed.badge === 'Commissions closed' && closed.on && closed.quote && /closed for now/.test(closed.text) && !/Commissions are open!/.test(closed.text), '[closed] badge and message follow the saved off switch; a blank quote stays hidden');
+    await (await p.$('.comm-top')).screenshot({ path: path.join(OUT, 'r6-badge-closed-desktop.png') });
+    await p.unroute('**/content/commissions.json');
+    await fulfill(j => { j.open = true; j.testimonialBy = 'A Name I Made Up'; });
+    await p.goto(BASE, { waitUntil: 'load' }); await p.waitForTimeout(700);
+    ok(await p.$eval('#quote', e => e.hidden) && await p.$eval('#commKicker', e => e.textContent.trim()) === 'Available for commissions', '[testimonial] a name alone stays hidden and the open choice is unchanged');
+    await p.unroute('**/content/commissions.json');
+    await fulfill(j => { j.testimonial = 'The portrait felt like my character.'; j.testimonialBy = 'A commissioner'; });
+    await p.goto(BASE, { waitUntil: 'load' }); await p.waitForTimeout(700); await go(p, '#quote', 'center'); await p.waitForTimeout(200);
+    const q = await p.evaluate(() => ({ hidden: document.querySelector('#quote').hidden, text: document.querySelector('#quoteText').textContent, by: document.querySelector('#quoteBy').textContent, byHidden: document.querySelector('#quoteBy').hidden }));
+    ok(!q.hidden && q.text === 'The portrait felt like my character.' && q.by === 'A commissioner' && !q.byHidden, '[testimonial] a saved quote and attribution are shown');
+    await (await p.$('#quote')).screenshot({ path: path.join(OUT, 'r6-testimonial-when-set-desktop.png') });
+    ok(!errs.length, '[badge/quote] no errors ' + errs.join(' ')); await c.close(); }
   await b.close(); console.log(fails ? `${fails} FAILED` : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();
