@@ -71,6 +71,19 @@
   const observe = (el) => io ? io.observe(el) : el.classList.add('in');
   document.querySelectorAll('.fade').forEach(observe);
 
+  // Artwork, music and CMS JSON are not kept for offline use. Say so, plainly, when there is no connection.
+  const showOfflineNote = () => {
+    if ($('#offlineNote')) return;
+    const n = document.createElement('p');
+    n.id = 'offlineNote'; n.className = 'offline-note'; n.setAttribute('role', 'status');
+    n.textContent = 'An internet connection is needed for artwork, music and the latest portfolio. They are not saved on this device.';
+    document.body.prepend(n);
+  };
+  const hideOfflineNote = () => $('#offlineNote')?.remove();
+  if (!navigator.onLine) showOfflineNote();
+  addEventListener('offline', showOfflineNote);
+  addEventListener('online', hideOfflineNote);
+
   // page scroll lock shared by the "See more" panel and the viewer
   let locks = 0;
   function lockScroll(d) {
@@ -706,4 +719,26 @@
     });
     return { render, show, get cur() { return cur; } };
   })();
+
+  // Install: a real browser prompt where one exists. iPhone and iPad only get Share instructions.
+  const installEl = $('#install'), installBtn = $('#installBtn'), installIos = $('#installIos');
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (installEl && !standalone) {
+    let deferred = null;
+    addEventListener('beforeinstallprompt', e => {
+      e.preventDefault(); deferred = e;
+      installEl.hidden = false; installBtn.hidden = false; installIos.hidden = true;
+    });
+    installBtn.addEventListener('click', async () => {
+      if (!deferred || typeof deferred.prompt !== 'function') return;
+      deferred.prompt();
+      try { await deferred.userChoice; } catch { }
+      deferred = null; installEl.hidden = true;
+    });
+    addEventListener('appinstalled', () => { installEl.hidden = true; });
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios) { installEl.hidden = false; installIos.hidden = false; }
+  }
+  // Automated browsers set webdriver and stub responses; a controlling worker would hide those stubs.
+  if ('serviceWorker' in navigator && !navigator.webdriver) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
 })();

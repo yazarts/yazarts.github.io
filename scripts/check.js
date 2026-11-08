@@ -379,5 +379,60 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
     ok(!q.hidden && q.text === 'The portrait felt like my character.' && q.by === 'A commissioner' && !q.byHidden, '[testimonial] a saved quote and attribution are shown');
     await (await p.$('#quote')).screenshot({ path: path.join(OUT, 'r6-testimonial-when-set-desktop.png') });
     ok(!errs.length, '[badge/quote] no errors ' + errs.join(' ')); await c.close(); }
+  { const { c, p, errs } = await ctx(b, 1280, 800, false);
+    await p.goto(BASE, { waitUntil: 'load' });
+    await p.evaluate(async () => {
+      await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) await new Promise(r => navigator.serviceWorker.addEventListener('controllerchange', () => r(), { once: true }));
+    });
+    await go(p, '#portfolio'); await p.waitForTimeout(700);
+    const info = await p.evaluate(async () => {
+      const manifest = await (await fetch('manifest.webmanifest')).json();
+      const names = await caches.keys();
+      const urls = [];
+      for (const n of names) { const cache = await caches.open(n); for (const req of await cache.keys()) urls.push(req.url); }
+      const sizes = {};
+      for (const icon of manifest.icons) {
+        const img = new Image();
+        await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error(icon.src)); img.src = icon.src; });
+        sizes[icon.src] = [img.naturalWidth, img.naturalHeight];
+      }
+      return { manifest, names, urls, sizes, installHidden: document.querySelector('#install').hidden, apple: !!document.querySelector('link[rel="apple-touch-icon"]') };
+    });
+    ok(info.manifest.name === 'yazarts' && info.manifest.short_name === 'yazarts' && info.manifest.display === 'standalone' && info.manifest.start_url === './' && info.apple, '[pwa] manifest is yazarts, standalone, with an Apple touch icon');
+    const want = { 'assets/icons/icon-192.png': 192, 'assets/icons/icon-512.png': 512, 'assets/icons/icon-maskable-192.png': 192, 'assets/icons/icon-maskable-512.png': 512 };
+    ok(Object.entries(want).every(([src, n]) => info.sizes[src] && info.sizes[src][0] === n && info.sizes[src][1] === n) && info.manifest.icons.some(i => i.purpose === 'any') && info.manifest.icons.some(i => i.purpose === 'maskable'), '[pwa] 192/512 any and maskable icons ' + JSON.stringify(info.sizes));
+    ok(info.names.length && info.names.every(n => /^yazarts-(shell|content)-/.test(n)) && !info.urls.some(u => /\/images\/|\/audio\//.test(u)), '[pwa] cache skips artwork and music');
+    const purged = await p.evaluate(async () => {
+      const old = await caches.open('yazarts-shell-old');
+      await old.put(new Request(location.origin + '/old-cache-probe'), new Response('stale'));
+      await new Promise(r => { navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'purged') r(); }); navigator.serviceWorker.controller.postMessage('purge'); });
+      return caches.keys();
+    });
+    ok(!purged.includes('yazarts-shell-old') && purged.every(n => /^yazarts-(shell|content)-1$/.test(n)), '[pwa] an older cache version is removed (' + purged.join(', ') + ')');
+    ok(info.installHidden, '[pwa] Install stays hidden until the browser offers a prompt');
+    await p.evaluate(() => dispatchEvent(new Event('beforeinstallprompt', { cancelable: true })));
+    ok(await p.$eval('#installBtn', b => !b.hidden && b.textContent.trim() === 'Install'), '[pwa] Install button appears for a supported prompt');
+    await p.click('#installBtn');
+    await c.setOffline(true);
+    await p.goto(BASE + 'not-a-real-page', { waitUntil: 'domcontentloaded' }).catch(() => {});
+    const off = await p.evaluate(() => document.body.innerText);
+    ok(/internet connection is needed/i.test(off) && /not saved/i.test(off), '[pwa] offline text asks for a connection (' + off.replace(/\s+/g, ' ').slice(0, 160) + ')');
+    ok(!errs.filter(e => !/not-a-real-page|Failed to fetch|net::ERR/.test(e)).length, '[pwa] no unexpected errors ' + errs.join(' || '));
+    await c.close(); }
+  for (const [w, h, ua, tag] of [
+    [390, 844, 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', 'iphone'],
+    [1024, 1366, 'Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', 'ipad'],
+  ]) {
+    const c = await b.newContext({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true, userAgent: ua, deviceScaleFactor: 2 });
+    const p = await c.newPage();
+    await p.goto(BASE, { waitUntil: 'load' }); await p.waitForTimeout(500);
+    await go(p, 'footer', 'end'); await p.waitForTimeout(200);
+    const inst = await p.evaluate(() => ({ box: document.querySelector('#install').hidden, btn: document.querySelector('#installBtn').hidden, text: document.querySelector('#installIos').textContent, ios: document.querySelector('#installIos').hidden }));
+    ok(!inst.box && inst.btn && !inst.ios && /Share/.test(inst.text) && /Add to Home Screen/.test(inst.text) && /cannot install/i.test(inst.text), `[${tag}] Add to Home Screen instructions, no automatic install`);
+    await shot(p, `r7-install-${tag}.png`);
+    await c.close();
+  }
   await b.close(); console.log(fails ? `${fails} FAILED` : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

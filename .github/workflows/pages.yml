@@ -28,6 +28,7 @@ jobs:
         run: |
           mkdir _site
           cp -r index.html assets content images .nojekyll _site/
+          cp manifest.webmanifest sw.js offline.html _site/
           [ -f CNAME ] && cp CNAME _site/ || true
           [ -f 404.html ] && cp 404.html _site/ || true
           [ -d audio ] && cp -r audio _site/ || true
