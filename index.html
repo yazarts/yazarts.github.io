@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>document.documentElement.classList.add('js')</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>yazarts · digital art portfolio by @yazarts</title>
@@ -67,7 +68,7 @@
   <section class="section comm" id="commissions" aria-labelledby="comm-h">
     <div class="section-head fade"><h2 id="comm-h">Commissions</h2><span class="rule"></span></div>
     <div class="comm-top fade">
-      <p class="comm-kicker" id="commKicker">Open for commissions!</p>
+      <p class="comm-kicker" id="commKicker">Available for commissions</p>
       <p class="comm-text" id="commText"></p>
       <p class="comm-what" id="commWhat">What I do:</p>
     </div>
@@ -79,6 +80,10 @@
         <button class="t-arrow" type="button" id="tNext" aria-label="Next commission type"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
       </div>
     </div>
+    <figure class="quote" id="quote" hidden>
+      <blockquote id="quoteText"></blockquote>
+      <figcaption id="quoteBy" hidden></figcaption>
+    </figure>
     <div class="contact fade" id="contact">
       <button class="pill" type="button" id="contactBtn" aria-expanded="false" aria-controls="contactBox"><span id="contactLabel">Not quite what you&#39;re looking for?</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="contact-box" id="contactBox">
@@ -98,11 +103,8 @@
   <article class="bio-card">
     <figure class="bio-photo"><img id="bioPhoto" src="images/site/bio-photo-placeholder.svg" alt="Photo of yazarts" decoding="async"></figure>
     <div class="bio-body" id="bioBody">
-      <p class="bio-kicker">Journal · about me</p>
       <h2 id="bioTitle">A little about me</h2>
-      <div class="bio-text" id="bioText" aria-hidden="true"></div>
-      <div class="sr" id="bioFull"></div>
-      <button class="bio-skip" type="button" id="bioSkip">Show all</button>
+      <div class="bio-text" id="bioText"></div>
     </div>
     <button class="lb-btn bio-close" type="button" id="bioClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </article>
