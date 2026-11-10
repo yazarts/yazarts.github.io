@@ -49,11 +49,12 @@ Tip: JPG or WEBP files about 2000 px on the long side, under 1 to 2 MB, keep the
 * **Email address**: type your address (`name@example.com`) or a `mailto:` link. It shows as an envelope that opens the visitor's email app. Leave it empty to hide the envelope. Nothing is sent from the site itself.
 * **Social links**: edit, add, reorder or remove, then **Save**. Instagram, TikTok, Reddit, Ko-fi, X/Twitter and YouTube get matching icons automatically. Put email in **Email address**, not in this list. The **Contact** item in the top menu jumps here and opens the icons.
 
-### Install on a phone or tablet
-The site can be added to a home screen. It opens in its own window under the name **yazarts**, with the palette mark as the icon. Artwork, music and the latest text still need an internet connection. They are not stored for offline use.
+### Install
+An **Install** button sits in the footer, unless the site is already open from the home screen. On Android Chrome it uses the browser install prompt. On iPhone, iPad, Mac Safari, and Firefox it shows the steps for that browser.
 
-* **Android (Chrome):** open https://yazarts.github.io/, then tap **Install** at the bottom of the page. If that button is not there, open the browser menu and choose **Install app** or **Add to Home screen**.
-* **iPhone or iPad (Safari):** tap the **Share** button, then **Add to Home Screen**, then **Add**. Safari cannot install it automatically. The same Share steps work in Chrome on iPhone and iPad, because those browsers use Safari's engine.
+* **iPhone or iPad:** tap Share, then Add to Home Screen, then Add.
+* **Mac Safari:** File, then Add to Dock.
+* **Android Chrome:** tap Install, or open the Chrome menu and choose Install app.
 
 ### Background music
 **Site settings → Background music**: upload a light track. It loops softly. Browsers block sound until a visitor interacts, so it starts right away where allowed, otherwise on the first click, tap or key press. The small blue equalizer next to the site name toggles it. Remove the file and **Save** to turn the music off.
@@ -103,7 +104,7 @@ index.html              the one page: nav + music toggle, welcome (+ "See more" 
 assets/style.css        styles: dark navy, steel blue and caramel; Quicksand and Nunito
 assets/site.js          loads content/*.json; welcome + fading story, portfolio brick packer + horizontal scroller,
                         commission slideshow (photo stack per type), contact reveal, music, the full-screen artwork viewer
-content/welcome.json    heroImage, heroImageAlt, heroBackground, heroTitle, heroIntro, bioTitle, bio, bioPhoto
+content/welcome.json    heroImage, heroBackground, heroTitle, heroIntro, bioTitle, bio, bioPhoto
 content/portfolio.json  { "artworks": [ { "image", "featured"? } ] }   (order = display order)
 content/commissions.json{ "open", "openText", "closedText", "testimonial"?, "testimonialBy"?, "tiers": [ { "images": [ "/images/…" ], "name", "description", "notes" } ] }
 content/contact.json    { "buttonLabel", "contactText", "email", "links": [ { "label", "url" } ] }
@@ -120,7 +121,7 @@ scripts/check.js        Playwright end-to-end checks + screenshots (desktop 1280
 * **Commission slideshow:** rAF-timed, 5 s per slide; pauses on hover, focus, touch, while the viewer is open and when the tab is hidden; dots, prev/next, keyboard and swipe; with `prefers-reduced-motion` it does not auto-advance. Each tier's `images` array (a legacy single `image` is still read, and duplicates are dropped) is a photo stack: one image is a single picture, two or more are offset so the extras peek out, and an empty list leaves the name and description. Tapping opens the full-screen viewer on that tier's originals only.
 * **Story panel:** the complete biography is in the page and fades in (about 0.4 s) when the panel opens. There is no typewriter and no cursor. `prefers-reduced-motion` shows it immediately. Esc, the X or the backdrop closes it.
 * **Paths:** the CMS writes `/images/...`; `site.js` strips the leading `/`, so the site works at the root and under any sub-path (checked by `scripts/check.js`).
-* **Installable:** `manifest.webmanifest`, icons in `assets/icons/` (the existing palette mark, including maskable and Apple sizes) and `sw.js`. The worker caches only the small shell and, as an offline fallback, the last JSON it successfully fetched. It does not cache `images/` or `audio/`. Online visits always ask the network first. Bump `VERSION` in `sw.js` to drop older caches. `offline.html` says an internet connection is needed.
+* **Installable:** `manifest.webmanifest`, the signature icons in `assets/icons/`, and `sw.js`. The worker is network-first for the shell and JSON, and it does not cache `images/` or `audio/`. Bump `VERSION` in `sw.js` to drop older caches. `offline.html` says an internet connection is needed.
 * **Run the checks:** `npm install`, `bash scripts/build_local.sh`, serve `/tmp/yaz-build/site` on :8091 and `/tmp/yaz-build/sub` on :8092 (`python3 -m http.server`), then `node scripts/check.js`. Screenshots go to `screenshots/` (git-ignored).
 * **Music:** `<audio id="bgAudio">` (0.35, loop); choice stored in `localStorage` `yaz.sound`.
 * **Viewer:** the clicked tile flies into a full-screen viewer tinted with the artwork's colour, showing only the artwork. Swipe or arrows to browse, pinch/double-tap/ctrl+scroll to zoom with the full-resolution original. Portfolio tiles and a commission tier's photos share it. A tier opens on its own photos, so the arrows never leave that tier; a single photo hides the arrows. The commission slideshow stays paused until the viewer closes.
