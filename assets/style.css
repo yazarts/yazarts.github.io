@@ -19,10 +19,10 @@ button{font:inherit;color:inherit}
 
 /* ---------- nav ---------- */
 .nav{position:fixed;inset:0 0 auto;z-index:50;height:var(--nav-h);transition:background .5s var(--ease),border-color .5s var(--ease);border-bottom:1px solid transparent}
-.nav.solid{background:rgba(12,20,32,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-color:var(--line)}
+.nav.solid{background:rgba(12,20,32,.96);border-color:var(--line)}
 .nav-inner{max-width:1200px;height:100%;margin:0 auto;padding:0 clamp(18px,4vw,40px);display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:.6rem;font-family:var(--head);font-weight:700;font-size:1.2rem;letter-spacing:.01em}
-.brand-mark{width:26px;height:26px;color:var(--caramel)}
+.brand-logo{height:46px;width:auto;display:block}
 .brand-wrap{display:flex;align-items:center;gap:12px;min-width:0}
 
 /* ---------- background music toggle (soft blue, right of the logo) ---------- */
@@ -111,7 +111,8 @@ html.js body.loaded .hero-text>:nth-child(1){transition-delay:.04s}.html.js body
 
 /* ---------- tiles ---------- */
 .tile{position:relative;display:block;width:100%;height:100%;border:0;padding:0;border-radius:var(--r);overflow:hidden;cursor:pointer;background:var(--card);
-  box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 24px -16px rgba(0,0,0,.7);transition:box-shadow .5s var(--ease);-webkit-tap-highlight-color:transparent}
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 24px -16px rgba(0,0,0,.7);transition:box-shadow .28s var(--ease),transform .28s var(--ease);-webkit-tap-highlight-color:transparent}
+.tile:active{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(156,195,230,.6),0 16px 32px -12px rgba(111,156,196,.85)}
 .tile img{width:100%;height:100%;max-width:none;object-fit:cover;object-position:center 35%;opacity:0;transition:opacity .45s var(--ease)}
 .tile img.ok{opacity:1}
 /* soft blue glow only where a real mouse can hover. No transform, so a finger on iPad never sticks a zoom mid-swipe. */
@@ -133,10 +134,10 @@ html.js body.loaded .hero-text>:nth-child(1){transition-delay:.04s}.html.js body
 .dragging .tile{pointer-events:none}
 .pf-scroll::-webkit-scrollbar{height:6px}.pf-scroll::-webkit-scrollbar-thumb{background:rgba(210,190,160,.22);border-radius:6px}
 /* two rows that together fill most of the screen height */
-.pf-track{position:relative;height:clamp(440px,calc(100svh - var(--nav-h) - 70px),900px);min-width:100%;contain:layout paint}
-.brick{position:absolute;opacity:1;transform:none}
-html.js .brick{opacity:0;transform:translateY(8px);transition:opacity .34s var(--ease),transform .34s var(--ease);transition-delay:var(--d,0s)}
-html.js .pf-track.in .brick{opacity:1;transform:none}
+.pf-track{position:relative;height:clamp(440px,calc(100svh - var(--nav-h) - 70px),900px);min-width:100%}
+.brick{position:absolute;opacity:1}
+html.js .brick{opacity:0;transition:opacity .34s var(--ease);transition-delay:var(--d,0s)}
+html.js .pf-track.in .brick{opacity:1}
 html.js .pf-track.settled .brick{transition:none}
 /* soft edge fades are separate static layers over the band (they only fade in/out at the ends) */
 .pf-edge{position:absolute;top:0;bottom:14px;width:clamp(24px,5vw,64px);pointer-events:none;z-index:2;transition:opacity .4s var(--ease)}
@@ -160,11 +161,14 @@ html.js .pf-track.settled .brick{transition:none}
 
 /* ---------- commissions: tier slideshow ---------- */
 .comm-top{margin-bottom:18px}
-.comm-kicker{display:inline-flex;align-items:center;gap:.55rem;font-family:var(--head);font-weight:700;font-size:.95rem;letter-spacing:.01em;color:#d7ebf8;
-  padding:.4rem .9rem .4rem .72rem;border-radius:99px;background:rgba(111,156,196,.16);border:1px solid rgba(156,195,230,.5)}
-.comm-kicker::before{content:"";width:8px;height:8px;border-radius:50%;background:#9cc3e6;box-shadow:0 0 0 4px rgba(156,195,230,.2)}
-.comm-kicker.closed{color:var(--caramel);background:rgba(168,117,74,.14);border-color:rgba(210,171,124,.4)}
-.comm-kicker.closed::before{background:var(--brown);box-shadow:0 0 0 4px rgba(168,117,74,.2)}
+.comm-kicker{display:inline-flex;align-items:center;gap:.55rem;font-family:var(--head);font-weight:700;font-size:.95rem;letter-spacing:.01em;color:#e7fff1;
+  padding:.4rem .95rem .4rem .72rem;border-radius:99px;background:rgba(46,168,102,.18);border:1px solid rgba(126,230,168,.55);
+  box-shadow:0 0 22px -8px rgba(72,220,140,.9);animation:badgeGlow 2.8s ease-in-out infinite}
+.comm-kicker::before{content:"";width:8px;height:8px;border-radius:50%;background:#3dce7a;box-shadow:0 0 0 4px rgba(61,206,122,.28),0 0 10px #3dce7a;animation:badgePulse 1.6s ease-in-out infinite}
+.comm-kicker.closed{color:var(--caramel);background:rgba(168,117,74,.14);border-color:rgba(210,171,124,.4);box-shadow:none;animation:none}
+.comm-kicker.closed::before{background:var(--brown);box-shadow:0 0 0 4px rgba(168,117,74,.2);animation:none}
+@keyframes badgePulse{0%,100%{box-shadow:0 0 0 3px rgba(61,206,122,.28),0 0 8px #3dce7a}50%{box-shadow:0 0 0 8px rgba(61,206,122,.08),0 0 16px #7dffb4}}
+@keyframes badgeGlow{0%,100%{box-shadow:0 0 16px -8px rgba(72,220,140,.7)}50%{box-shadow:0 0 28px -4px rgba(120,255,180,.95)}}
 .comm-text{color:var(--soft);max-width:68ch;margin-top:10px}
 .quote{max-width:38rem;margin:clamp(26px,4vw,40px) auto 0;padding:0;text-align:center}
 .quote blockquote{font-family:var(--head);font-weight:600;font-size:clamp(1.05rem,2vw,1.28rem);line-height:1.45;color:#d7ebf8}
@@ -181,7 +185,7 @@ html.js .pf-track.settled .brick{transition:none}
 .tier.no-photos .tier-media{display:none}
 .tier-media{height:clamp(300px,min(44vw,62vh),480px);display:flex;align-items:stretch;justify-content:center}
 .tier-open{position:relative;display:block;width:min(100%,440px);height:auto;align-self:stretch;padding:0;border:0;background:none;cursor:zoom-in;border-radius:18px;
-  opacity:0;transform:translateX(60px) scale(1.06);filter:blur(14px)}
+  opacity:0;transform:translateX(28px)}
 .tier-open:focus-visible{outline-offset:6px}
 .stack{display:block;position:relative;width:100%;height:100%}
 .stack .card{position:absolute;border-radius:16px;overflow:hidden;background:#152234}
@@ -198,16 +202,16 @@ html.js .pf-track.settled .brick{transition:none}
 .tier-text{min-width:0}
 .tier-name{font-family:var(--head);font-weight:700;font-size:clamp(2rem,4.4vw,3.6rem);line-height:1.05;color:#9cc3e6;letter-spacing:.005em}
 .tier-name .w{display:inline-block;white-space:nowrap}
-.tier-name .ch{display:inline-block;opacity:0;transform:translateY(.55em) rotate(4deg);filter:blur(4px)}
+.tier-name .ch{display:inline-block;opacity:0;transform:translateY(.35em)}
 .tier-desc{color:var(--soft);font-size:1.05rem;max-width:46ch;margin-top:16px;white-space:pre-line;opacity:0;transform:translateY(12px)}
 .tier-notes{color:var(--mute);font-size:.88rem;max-width:46ch;margin-top:14px;white-space:pre-line;opacity:0;transform:translateY(10px)}
 /* entering */
-.tier.on .tier-open{opacity:1;transform:none;filter:blur(0);transition:opacity .9s var(--ease) .1s,transform 1.1s cubic-bezier(.2,.75,.2,1) .1s,filter .9s var(--ease) .1s}
-.tier.on .tier-name .ch{opacity:1;transform:none;filter:blur(0);transition:opacity .5s var(--ease),transform .6s cubic-bezier(.2,.8,.2,1),filter .5s var(--ease);transition-delay:calc(.35s + var(--i) * 28ms)}
+.tier.on .tier-open{opacity:1;transform:none;transition:opacity .45s var(--ease) .05s,transform .5s cubic-bezier(.2,.75,.2,1) .05s}
+.tier.on .tier-name .ch{opacity:1;transform:none;transition:opacity .35s var(--ease),transform .4s var(--ease);transition-delay:calc(.12s + var(--i) * 16ms)}
 .tier.on .tier-desc{opacity:1;transform:none;transition:opacity .7s var(--ease) .75s,transform .7s var(--ease) .75s}
 .tier.on .tier-notes{opacity:1;transform:none;transition:opacity .7s var(--ease) 1s,transform .7s var(--ease) 1s}
 /* leaving */
-.tier.leave .tier-open{opacity:0;transform:translateX(-50px) scale(.95);filter:blur(10px);transition:opacity .6s var(--ease),transform .8s var(--ease),filter .6s var(--ease)}
+.tier.leave .tier-open{opacity:0;transform:translateX(-24px);transition:opacity .35s var(--ease),transform .4s var(--ease)}
 .tier.leave .tier-text>*{opacity:0;transform:translateY(-10px);transition:opacity .35s var(--ease),transform .4s var(--ease)}
 .tier.leave .tier-name .ch{opacity:0;transition:opacity .3s var(--ease)}
 .tier.back:not(.on) .tier-open{transform:translateX(-60px) scale(1.06)}
@@ -244,10 +248,13 @@ html.js .pf-track.settled .brick{transition:none}
 @keyframes popIn{from{opacity:0;transform:translateY(10px) scale(.94)}to{opacity:1;transform:none}}
 
 .foot{max-width:1200px;margin:clamp(64px,9vw,110px) auto 0;padding:24px clamp(18px,4vw,40px) 32px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;color:var(--mute);font-size:.85rem}
-.install{flex:1 0 100%;display:flex;justify-content:flex-end;align-items:center;margin:0 0 8px}
 .install-btn{font-family:var(--head);font-weight:700;font-size:.85rem;color:#d7ebf8;background:rgba(111,156,196,.16);border:1px solid rgba(156,195,230,.5);border-radius:99px;padding:.4rem .9rem;cursor:pointer}
 .install-btn:hover{background:rgba(111,156,196,.28)}
-.install-ios{max-width:34rem;line-height:1.45;text-align:right}
+.install-modal{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:22px}
+.install-bg{position:absolute;inset:0;background:rgba(5,8,13,.72)}
+.install-card{position:relative;width:min(420px,100%);padding:26px 24px;border-radius:20px;background:#152234;border:1px solid var(--line);box-shadow:0 24px 60px -28px rgba(0,0,0,.9);text-align:center}
+.install-card h2{font-family:var(--head);font-weight:700;font-size:1.35rem;color:#d7ebf8;margin:0 0 10px}
+.install-card p{color:var(--soft);margin:0 0 18px;line-height:1.55}
 .offline-note{position:sticky;top:var(--nav-h);z-index:40;margin:0;padding:10px 16px;text-align:center;background:#152234;color:var(--soft);border-bottom:1px solid var(--line);font-size:.9rem}
 
 /* ---------- "See more": journal-style biography panel ---------- */
@@ -272,33 +279,32 @@ html.js .pf-track.settled .brick{transition:none}
 
 /* ---------- scroll fade: visible unless JS opts in, then a short rise. No blur. ---------- */
 .fade{opacity:1;transform:none}
-html.js .fade{opacity:0;transform:translateY(8px);transition:opacity .34s var(--ease),transform .34s var(--ease);transition-delay:var(--d,0s)}
-html.js .fade.in{opacity:1;transform:none}
+html.js .fade{opacity:0;transition:opacity .34s var(--ease);transition-delay:var(--d,0s)}
+html.js .fade.in{opacity:1}
 
 /* ---------- viewer ---------- */
 .lightbox{position:fixed;inset:0;z-index:100;display:grid;grid-template-columns:100%;grid-template-rows:100%;overflow:hidden;
   touch-action:none;overscroll-behavior:contain;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 .lb-bg,.lb-tint{position:absolute;inset:0;opacity:0;transition:opacity .42s var(--ease)}
-.lb-bg{background:rgba(5,8,13,.78)}
-@supports (backdrop-filter:blur(1px)){.lb-bg{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}}
+.lb-bg{background:rgba(5,8,13,.92)}
 .lb-tint{background-color:rgba(12,20,32,.7);transition:opacity .42s var(--ease),background-color .9s var(--ease)}
-.lb-glow{position:absolute;left:50%;top:42%;width:min(80vmin,720px);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);filter:blur(90px);
+.lb-glow{position:absolute;left:50%;top:42%;width:min(80vmin,720px);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);
   opacity:0;pointer-events:none;transition:opacity .6s var(--ease),background-color .9s var(--ease)}
 .lightbox.open .lb-bg,.lightbox.open .lb-tint{opacity:1}
 .lightbox.open .lb-glow{opacity:.5}
 .lb-stage{position:relative;overflow:hidden;min-height:0;cursor:grab}
 .lb-stage.dragging{cursor:grabbing}
-.lb-track{position:absolute;inset:0;will-change:transform}
-.lb-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:64px 12px calc(16px + env(safe-area-inset-bottom))}
+.lb-track{position:absolute;top:0;left:0;width:100%;height:100%}
+.lb-slide{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:64px 12px calc(16px + env(safe-area-inset-bottom));margin:0}
+.lb-slide.off{display:none!important}
 .lb-slide img{display:block;flex:none;max-width:none;max-height:none;border-radius:10px;box-shadow:0 30px 80px -30px rgba(0,0,0,.9);transform-origin:0 0;
-  background:center/100% 100% no-repeat;image-rendering:auto;
-  -webkit-user-drag:none;cursor:zoom-in;background-color:rgba(255,255,255,.02)}
+  image-rendering:auto;background:none;-webkit-user-drag:none;cursor:zoom-in}
 .zoomed .lb-slide img{cursor:zoom-out}
 .zoomed .lb-stage{cursor:move}
 .lb-flyer{position:fixed;z-index:6;overflow:hidden;pointer-events:none;box-shadow:0 30px 80px -30px rgba(0,0,0,.9)}
 .lb-flyer img{width:100%;height:100%;object-fit:cover}
-.lb-btn{position:absolute;z-index:4;width:46px;height:46px;border-radius:50%;border:1px solid rgba(236,228,216,.14);background:rgba(10,14,22,.45);cursor:pointer;display:grid;place-items:center;
-  transition:background .3s var(--ease),border-color .3s,opacity .3s;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.lb-btn{position:absolute;z-index:4;width:46px;height:46px;border-radius:50%;border:1px solid rgba(236,228,216,.14);background:rgba(10,14,22,.72);cursor:pointer;display:grid;place-items:center;
+  transition:background .3s var(--ease),border-color .3s,opacity .3s}
 .lb-btn:hover{background:rgba(21,34,52,.85);border-color:rgba(210,171,124,.5)}
 .lb-btn svg{width:20px;height:20px;fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .lb-close{top:14px;right:14px;opacity:0}.lightbox.open .lb-close{opacity:1}
@@ -349,7 +355,7 @@ html.js .fade.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{transition-duration:.01ms!important;transition-delay:0s!important;animation:none!important}
-  .fade,html.js .fade,.hero-text>*,html.js .hero-text>*,.hero-figure img,html.js .hero-figure img,.hero-bg img,.brick,html.js .brick,.bio-card,.bio-text{opacity:1;transform:none}
+  .fade,html.js .fade,.hero-text>*,html.js .hero-text>*,.hero-figure img,html.js .hero-figure img,.hero-bg img,.brick,html.js .brick,.bio-card,.bio-text,.comm-kicker,.comm-kicker::before{opacity:1;transform:none;animation:none}
   .hero-lines i,html.js body:not(.loaded) .hero-lines i{transform:none}
   .tier .tier-open,.tier.on .tier-open{opacity:1;transform:none;filter:none}
 }

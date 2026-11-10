@@ -4,23 +4,34 @@
   "closedText": "Commissions are closed for now. Follow me on Instagram or TikTok to hear when they reopen, or support my work on Ko-fi.",
   "tiers": [
     {
-      "image": "/images/commissions/img-20261108-wa0005.jpg",
       "name": "Portraits",
       "description": "A head-and-shoulders portrait of your character or OC, fully coloured and shaded, with a simple background.",
-      "notes": "Example: replace with your own art."
+      "notes": "Example: replace with your own art.",
+      "photos": [
+        "/images/commissions/img-20261108-wa0005.jpg"
+      ]
     },
     {
       "name": "Half Body",
       "description": "Your character from the waist up, with hands, outfit details and a soft background.",
-      "notes": "Example: replace with your own art."
+      "notes": "Example: replace with your own art.",
+      "photos": [
+        "/images/examples/half-body-example.jpg"
+      ]
     },
     {
       "name": "Full Body Character",
       "description": "A full body illustration of your character, head to toe, fully rendered with lighting and a simple scene.",
-      "notes": "Example: replace with your own art."
+      "notes": "Example: replace with your own art.",
+      "photos": [
+        "/images/examples/full-body-example.jpg"
+      ]
     },
     {
-      "name": "Animals"
+      "name": "Animals",
+      "photos": [
+        "/images/artworks/img1164.jpeg"
+      ]
     }
   ]
 }

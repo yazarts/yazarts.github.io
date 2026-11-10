@@ -37,18 +37,18 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
   const welcomeFile = JSON.parse(fs.readFileSync(path.join(root, 'content/welcome.json'), 'utf8'));
   const pagesYml = fs.readFileSync(path.join(root, '.pages.yml'), 'utf8');
   const migrated = [
-    ['Portraits', '/images/artworks/Untitled192.jpg', 'A head-and-shoulders portrait'],
+    ['Portraits', '/images/commissions/img-20261108-wa0005.jpg', 'A head-and-shoulders portrait'],
     ['Half Body', '/images/examples/half-body-example.jpg', 'Your character from the waist up'],
     ['Full Body Character', '/images/examples/full-body-example.jpg', 'A full body illustration'],
     ['Animals', '/images/artworks/img1164.jpeg', ''],
   ];
-  ok(commFile.tiers.length === migrated.length && !JSON.stringify(commFile).includes('"price"') && !JSON.stringify(commFile).includes('"image"'), 'published tiers keep names and a single migrated photo, with prices and the old image field gone');
+  ok(commFile.tiers.length === migrated.length && !JSON.stringify(commFile).includes('"price"') && !JSON.stringify(commFile).includes('"image"'), 'published tiers keep names and a single photo, with prices and the old image field gone');
   ok(migrated.every(([name, img, desc], i) => {
     const t = commFile.tiers[i];
-    return t.name === name && Array.isArray(t.images) && t.images.length === 1 && t.images[0] === img && (desc ? t.description.startsWith(desc) : t.description == null);
-  }), 'each existing tier photo was kept once: ' + commFile.tiers.map(t => t.name + ' ' + (t.images || []).join(',')).join(' | '));
+    return t.name === name && Array.isArray(t.photos) && t.photos.length === 1 && t.photos[0] === img && (desc ? t.description.startsWith(desc) : t.description == null);
+  }), 'each tier photo was kept once: ' + commFile.tiers.map(t => t.name + ' ' + (t.photos || []).join(',')).join(' | '));
   ok(contactFile.email === 'aitazouzabdellah@gmail.com' && contactFile.links.length === 4 && contactFile.links.some(l => l.url.includes('tiktok.com/@yaz.arts')) && !contactFile.links.some(l => /mail/i.test(l.label) || /gmail\.com|mailto:/i.test(l.url)), 'email field is the address already in the repo; social links are unchanged and not duplicated');
-  ok(/name: images[\s\S]*multiple: true[\s\S]*unique: true/.test(pagesYml) && !/name: price/.test(pagesYml) && /name: email/.test(pagesYml) && /name: testimonial\b/.test(pagesYml) && /name: testimonialBy/.test(pagesYml), 'CMS edits photos, email and an optional testimonial, and has no price field');
+  ok(/name: photos[\s\S]*list: true/.test(pagesYml) && !/name: price/.test(pagesYml) && !/heroImageAlt/.test(pagesYml) && /name: logo/.test(pagesYml) && /name: email/.test(pagesYml), 'CMS has a Photos list, a logo, and email, and has no price or floating image description');
   ok(commFile.open === true && commFile.testimonial == null && commFile.testimonialBy == null, 'commissions stay open and no testimonial was invented');
   ok(welcomeFile.bio.startsWith("I'm a self-taught digital artist. I started out drawing just for fun, filling sketchbooks") && welcomeFile.bio.includes('Thank you for stopping by!') && welcomeFile.bioTitle === 'A little about me', 'bio text and heading are the ones already saved');
 
@@ -192,7 +192,7 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
         pos: cards.map(c => { const r = c.getBoundingClientRect(); return [Math.round(r.left - box.left), Math.round(r.top - box.top)]; }),
         price: !!document.querySelector('.tier-price'), text: document.querySelector('#tiers').innerText, desc: !!t.querySelector('.tier-desc') };
     });
-    ok(stack.n === 3 && stack.multi && new Set(stack.srcs).size === 3 && stack.srcs[0].includes('Untitled192'), L + 'front photo is the existing portrait, two different photos peek behind: ' + stack.srcs.map(s => s.split('/').pop()).join(' '));
+    ok(stack.n === 3 && stack.multi && new Set(stack.srcs).size === 3 && stack.srcs[0].includes('wa0005'), L + 'front photo is the saved portrait, two different photos peek behind: ' + stack.srcs.map(s => s.split('/').pop()).join(' '));
     const gap = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
     ok(gap(stack.pos[0], stack.pos[1]) > 24 && gap(stack.pos[0], stack.pos[2]) > 24, L + `stack layers are offset ${JSON.stringify(stack.pos)}`);
     ok(!stack.price && stack.desc && !/\$\s?\d|\d\s?\$/.test(stack.text), L + 'descriptions stay, no price tag is rendered');
@@ -200,7 +200,7 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
     await p.click('.tier.on .card.c0'); await p.waitForTimeout(1400);
     const tv = await p.evaluate(() => { const cur = [...document.querySelectorAll('.lb-slide')].find(s => s.getAttribute('aria-hidden') === 'false').querySelector('img');
       return { open: !document.querySelector('#lb').hidden, src: cur.currentSrc, nat: [cur.naturalWidth, cur.naturalHeight], live: document.querySelector('#lbLive').textContent, one: document.querySelector('#lb').classList.contains('one') }; });
-    ok(tv.open && !tv.one && /Artwork 1 of 3/.test(tv.live) && /Untitled192/.test(tv.src) && !/thumbs\//.test(tv.src) && tv.nat[0] > 800, L + `tap opens the original (${tv.src.split('/').pop()} ${tv.nat.join('x')}, ${tv.live})`);
+    ok(tv.open && !tv.one && /Artwork 1 of 3/.test(tv.live) && /wa0005/.test(tv.src) && !/thumbs\//.test(tv.src) && !/placeholder/.test(tv.src) && tv.nat[0] > 400, L + `tap opens the original (${tv.src.split('/').pop()} ${tv.nat.join('x')}, ${tv.live})`);
     if (mob && w < 900) {
       const cdp = await c.newCDPSession(p);
       const y = Math.round(h / 2);
@@ -398,7 +398,7 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
         await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error(icon.src)); img.src = icon.src; });
         sizes[icon.src] = [img.naturalWidth, img.naturalHeight];
       }
-      return { manifest, names, urls, sizes, installHidden: document.querySelector('#install').hidden, apple: !!document.querySelector('link[rel="apple-touch-icon"]') };
+      return { manifest, names, urls, sizes, installHidden: document.querySelector('#installBtn').hidden, apple: !!document.querySelector('link[rel="apple-touch-icon"]') };
     });
     ok(info.manifest.name === 'yazarts' && info.manifest.short_name === 'yazarts' && info.manifest.display === 'standalone' && info.manifest.start_url === './' && info.apple, '[pwa] manifest is yazarts, standalone, with an Apple touch icon');
     const want = { 'assets/icons/icon-192.png': 192, 'assets/icons/icon-512.png': 512, 'assets/icons/icon-maskable-192.png': 192, 'assets/icons/icon-maskable-512.png': 512 };
@@ -410,11 +410,11 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
       await new Promise(r => { navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'purged') r(); }); navigator.serviceWorker.controller.postMessage('purge'); });
       return caches.keys();
     });
-    ok(!purged.includes('yazarts-shell-old') && purged.every(n => /^yazarts-(shell|content)-1$/.test(n)), '[pwa] an older cache version is removed (' + purged.join(', ') + ')');
-    ok(info.installHidden, '[pwa] Install stays hidden until the browser offers a prompt');
-    await p.evaluate(() => dispatchEvent(new Event('beforeinstallprompt', { cancelable: true })));
-    ok(await p.$eval('#installBtn', b => !b.hidden && b.textContent.trim() === 'Install'), '[pwa] Install button appears for a supported prompt');
-    await p.click('#installBtn');
+    ok(!purged.includes('yazarts-shell-old') && purged.every(n => /^yazarts-(shell|content)-2$/.test(n)), '[pwa] an older cache version is removed (' + purged.join(', ') + ')');
+    ok(!info.installHidden, '[pwa] Install button is available without a browser prompt');
+    await p.click('#installBtn'); await p.waitForTimeout(100);
+    ok(await p.$eval('#installModal', m => !m.hidden && /Install yazarts/.test(m.innerText)), '[pwa] desktop without a native prompt opens the steps');
+    await p.click('#installClose');
     await c.setOffline(true);
     await p.goto(BASE + 'not-a-real-page', { waitUntil: 'domcontentloaded' }).catch(() => {});
     const off = await p.evaluate(() => document.body.innerText);
@@ -429,8 +429,9 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
     const p = await c.newPage();
     await p.goto(BASE, { waitUntil: 'load' }); await p.waitForTimeout(500);
     await go(p, 'footer', 'end'); await p.waitForTimeout(200);
-    const inst = await p.evaluate(() => ({ box: document.querySelector('#install').hidden, btn: document.querySelector('#installBtn').hidden, text: document.querySelector('#installIos').textContent, ios: document.querySelector('#installIos').hidden }));
-    ok(!inst.box && inst.btn && !inst.ios && /Share/.test(inst.text) && /Add to Home Screen/.test(inst.text) && /cannot install/i.test(inst.text), `[${tag}] Add to Home Screen instructions, no automatic install`);
+    await p.click('#installBtn'); await p.waitForTimeout(150);
+    const inst = await p.evaluate(() => ({ open: !document.querySelector('#installModal').hidden, text: document.querySelector('#installSteps').textContent, footer: document.body.innerText }));
+    ok(inst.open && /Share/.test(inst.text) && /Add to Home Screen/.test(inst.text) && !/Safari cannot install/.test(inst.footer), `[${tag}] Install opens Add to Home Screen steps`);
     await shot(p, `r7-install-${tag}.png`);
     await c.close();
   }

@@ -19,15 +19,18 @@
   function tierImages(t) {
     if (!t || typeof t !== 'object') return [];
     const raw = [];
-    if (Array.isArray(t.images)) raw.push(...t.images);
-    else if (typeof t.images === 'string') raw.push(t.images);
+    for (const key of ['photos', 'images']) {
+      const v = t[key];
+      if (Array.isArray(v)) raw.push(...v);
+      else if (typeof v === 'string') raw.push(v);
+    }
     if (typeof t.image === 'string') raw.push(t.image);
     const seen = new Set(), out = [];
     for (const item of raw) {
       const p = typeof item === 'string' ? item : (item && typeof item === 'object' ? (item.image || item.src || '') : '');
       if (typeof p !== 'string' || !p.trim()) continue;
       const key = clean(p);
-      if (!key || seen.has(key)) continue;
+      if (!key || seen.has(key) || /placeholder-\d+\.svg$/i.test(key)) continue;
       seen.add(key); out.push(p.trim());
     }
     return out;
@@ -69,7 +72,8 @@
   // gentle fade-in on scroll
   const io = !reduce && 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -6% 0px', threshold: .05 }) : null;
   const observe = (el) => io ? io.observe(el) : el.classList.add('in');
-  document.querySelectorAll('.fade').forEach(observe);
+  const inView = (el) => { const r = el.getBoundingClientRect(); return r.top < innerHeight * 0.96 && r.bottom > 0; };
+  document.querySelectorAll('.fade').forEach(el => { if (reduce || inView(el)) el.classList.add('in'); else observe(el); });
 
   // Artwork, music and CMS JSON are not kept for offline use. Say so, plainly, when there is no connection.
   const showOfflineNote = () => {
@@ -99,7 +103,7 @@
     if (w.heroIntro != null) $('#heroIntro').textContent = w.heroIntro;
     // floating cut-out (left)
     if (w.heroImage) { const src = asset(w.heroImage); if (heroImg.getAttribute('src') !== src) heroImg.src = src; }
-    heroImg.alt = w.heroImageAlt || 'Character art by @yazarts';
+    heroImg.alt = 'Character art by @yazarts';
     hero.classList.toggle('no-img', w.heroImage === '' || w.heroImage === null);
     // full-cover background illustration; without one the calm navy "space" background shows
     const bg = w.heroBackground;
@@ -254,7 +258,8 @@
       pack();
     }
     let packT = 0; const schedule = () => { cancelAnimationFrame(packT); packT = requestAnimationFrame(pack); };
-    addEventListener('resize', () => { if (track.clientHeight !== lastH || innerWidth !== lastW) schedule(); });
+    // iPad Safari fires resize when the address bar shows or hides. Relayout only when the width changes, or the tiles jump mid-swipe.
+    addEventListener('resize', () => { if (innerWidth !== lastW) schedule(); });
 
     // edge fades, arrows and the "swipe" hint follow the scroll position (only classes on the WRAPPER change, and only
     // when the state actually flips, so scrolling never forces the band itself to repaint)
@@ -269,6 +274,7 @@
     }
     let ticking = false;
     scroller.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; sync(); }); } if (!anim) target = scroller.scrollLeft; }, { passive: true });
+    scroller.addEventListener('touchstart', () => track.classList.add('settled'), { passive: true });
 
     // Mouse wheel over the band scrolls it sideways until it reaches an end, then the page scrolls on.
     // Trackpads (small pixel deltas) move it 1:1 so their own momentum stays smooth; notched mouse wheels glide.
@@ -280,6 +286,7 @@
       scroller.scrollLeft = x + d * 0.2; anim = requestAnimationFrame(step);
     };
     scroller.addEventListener('wheel', e => {
+      if (matchMedia('(pointer: coarse)').matches) return;   // finger swipes stay native
       if (e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
       const max = scroller.scrollWidth - scroller.clientWidth; if (max < 4) return;
       const dy = e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? scroller.clientWidth : 1);
@@ -314,10 +321,12 @@
 
     track.addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) open(+t.dataset.i, { list: art, grid: track, tint: null }); });
     // entrance: the bricks rise in one after another the first time the band scrolls into view
-    if (!reduce && 'IntersectionObserver' in window) {
-      const eio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { track.classList.add('in'); eio.disconnect(); setTimeout(() => track.classList.add('settled'), 700); } }), { threshold: 0.15 });
+    const showBricks = () => { track.classList.add('in'); setTimeout(() => track.classList.add('settled'), 400); };
+    if (reduce || inView(track)) showBricks();
+    else if ('IntersectionObserver' in window) {
+      const eio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { showBricks(); eio.disconnect(); } }), { threshold: 0.05 });
       eio.observe(track);
-    } else track.classList.add('in', 'settled');
+    } else showBricks();
     return { render, pack, sync };
   })();
 
@@ -376,16 +385,24 @@
   function fill(slot, i) {
     const s = slides[slot], im = s.firstElementChild, j = wrap(i), a = L()[j], src = asset(a.image);   // always the untouched original file
     s.dataset.i = j; s.setAttribute('aria-hidden', slot !== 1); im.alt = slot === 1 ? `Artwork ${j + 1} of ${N()} by @yazarts` : '';
+    im.style.backgroundImage = '';
     if (im.getAttribute('src') !== src) {
-      im.style.opacity = ''; const t = thumb(a.image);
-      im.style.backgroundImage = t !== src ? `url("${t.replace(/"/g, '%22')}")` : '';      // fast preview while the full-resolution file loads
-      im.onload = () => { fit(im); im.style.backgroundImage = ''; if (j === panelI) setTint(j); }; im.src = src;
+      im.style.opacity = '';
+      im.onload = () => { fit(im); if (j === panelI) setTint(j); }; im.src = src;
     }
     fit(im);
   }
-  function place() { slides.forEach((s, k) => { s.style.transform = `translate3d(${(k - 1) * (W + GAP)}px,0,0)`; }); slides[0].hidden = slides[2].hidden = N() < 2; }
+  function place() {
+    const w = W || stage.clientWidth || innerWidth;
+    slides.forEach((s, k) => {
+      const off = N() < 2 && k !== 1;
+      s.classList.toggle('off', off); s.hidden = off;
+      s.style.transform = `translate3d(${(k - 1) * (w + GAP)}px,0,0)`;
+      if (off) { const im = s.firstElementChild; im.removeAttribute('src'); im.style.backgroundImage = ''; }
+    });
+  }
   function setOffset(x, ms = 0) { offset = x; track.style.transition = ms ? `transform ${ms}ms ${EASE}` : 'none'; track.style.transform = `translate3d(${x}px,0,0)`; }
-  function layout() { W = stage.clientWidth; place(); slides.forEach(s => fit(s.firstElementChild)); lb.classList.toggle('one', N() < 2); }
+  function layout() { W = stage.clientWidth || innerWidth; place(); slides.forEach(s => { if (!s.classList.contains('off')) fit(s.firstElementChild); }); lb.classList.toggle('one', N() < 2); }
 
   // ----- ambient tint: average colour of the artwork (weighted towards saturated pixels), always kept dark -----
   const tints = new Map();
@@ -624,6 +641,7 @@
     T = T && typeof T === 'object' ? T : {};
     if (T.thumbs || T.sizes) { thumbs = T.thumbs || {}; sizes = T.sizes || {}; } else thumbs = T;
     if (s.siteName) { $('#brandName').textContent = s.siteName; $('#footName').textContent = s.siteName; }
+    if (s.logo) { const logo = $('#brandLogo'); if (logo) logo.src = asset(s.logo); }
     renderWelcome(w);
     art = (g.artworks || []).filter(a => a && a.image);
     pf.render();
@@ -720,25 +738,39 @@
     return { render, show, get cur() { return cur; } };
   })();
 
-  // Install: a real browser prompt where one exists. iPhone and iPad only get Share instructions.
-  const installEl = $('#install'), installBtn = $('#installBtn'), installIos = $('#installIos');
+  // Install: use the browser prompt where it exists. Everywhere else, a short modal with the real steps.
+  const installBtn = $('#installBtn'), installModal = $('#installModal'), installSteps = $('#installSteps');
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  if (installEl && !standalone) {
+  const installHelp = () => {
+    const ua = navigator.userAgent;
+    const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios) return 'Tap the Share button, then Add to Home Screen, then Add.';
+    if (/Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR|Firefox/.test(ua)) return 'In the menu bar, choose File, then Add to Dock.';
+    if (/Firefox/.test(ua)) return 'Open the browser menu and choose Install if it is listed.';
+    return 'Open the browser menu and choose Install app, or use the install icon in the address bar.';
+  };
+  const closeInstall = () => { if (installModal) installModal.hidden = true; };
+  if (installBtn && !standalone) {
+    installBtn.hidden = false;
     let deferred = null;
-    addEventListener('beforeinstallprompt', e => {
-      e.preventDefault(); deferred = e;
-      installEl.hidden = false; installBtn.hidden = false; installIos.hidden = true;
-    });
+    addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; });
     installBtn.addEventListener('click', async () => {
-      if (!deferred || typeof deferred.prompt !== 'function') return;
-      deferred.prompt();
-      try { await deferred.userChoice; } catch { }
-      deferred = null; installEl.hidden = true;
+      if (deferred && typeof deferred.prompt === 'function') {
+        deferred.prompt();
+        try { await deferred.userChoice; } catch { }
+        deferred = null; installBtn.hidden = true; return;
+      }
+      if (installSteps) installSteps.textContent = installHelp();
+      if (installModal) { installModal.hidden = false; $('#installClose')?.focus(); }
     });
-    addEventListener('appinstalled', () => { installEl.hidden = true; });
-    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (ios) { installEl.hidden = false; installIos.hidden = false; }
+    addEventListener('appinstalled', () => { installBtn.hidden = true; closeInstall(); });
+    $('#installClose')?.addEventListener('click', closeInstall);
+    $('#installBg')?.addEventListener('click', closeInstall);
+    addEventListener('keydown', e => { if (e.key === 'Escape' && installModal && !installModal.hidden) closeInstall(); });
   }
-  // Automated browsers set webdriver and stub responses; a controlling worker would hide those stubs.
-  if ('serviceWorker' in navigator && !navigator.webdriver) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
+  if ('serviceWorker' in navigator && !navigator.webdriver) {
+    let refreshed = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (refreshed) return; refreshed = true; location.reload(); });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
+  }
 })();

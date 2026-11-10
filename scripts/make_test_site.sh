@@ -18,11 +18,12 @@ s = json.load(open(f'{T}/content/site.json')); s['music'] = '/audio/site/test-bg
 # First commission tier becomes a real multi-photo stack (distinct files, original kept in front). Other tiers stay as published.
 c = json.load(open(f'{T}/content/commissions.json'))
 if c.get('tiers'):
-    imgs = list(c['tiers'][0].get('images') or [])
+    key = 'photos' if c['tiers'][0].get('photos') else 'images'
+    imgs = list(c['tiers'][0].get(key) or [])
     for extra in ('/images/artworks/giant-girl-lake.jpg', '/images/artworks/img1593.jpeg'):
         if extra not in imgs:
             imgs.append(extra)
-    c['tiers'][0]['images'] = imgs
+    c['tiers'][0][key] = imgs
     c['tiers'][0].pop('image', None)
     c['tiers'][0].pop('price', None)
     json.dump(c, open(f'{T}/content/commissions.json', 'w'), indent=1)

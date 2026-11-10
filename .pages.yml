@@ -1,8 +1,7 @@
-# Pages CMS configuration (https://pagescms.org/docs/configuration/)
-# Log in at https://app.pagescms.org with GitHub and open the "yazarts.github.io" repository.
-# Sidebar order: Welcome section, Portfolio, Commissions, Contact & socials, Site settings, then the Images and Music media folders.
-# Every save is a commit on "main"; the site republishes itself in about 1 to 2 minutes.
-# Uploads are stored exactly as uploaded (never resized or recompressed).
+# Pages CMS configuration. https://pagescms.org/docs/configuration/
+# Log in at https://app.pagescms.org with GitHub and open yazarts.github.io.
+# Every save is a commit on main. The site republishes in about 1 to 2 minutes.
+# Uploads are stored exactly as uploaded.
 
 media:
   - name: images
@@ -19,55 +18,49 @@ media:
     rename: safe
 
 content:
-  # ------------------------------------------------------------------ Welcome
   - name: welcome
-    label: Welcome section
+    label: Welcome
     type: file
     path: content/welcome.json
     format: json
     fields:
       - name: heroImage
-        label: Floating character image (left side)
-        description: A PNG with a TRANSPARENT background (a character cut-out) works best; it floats over the background with no box. Remove it to hide it.
+        label: Character image
+        description: A PNG with a transparent background floats on the left. Remove it to hide it.
         type: image
         options:
           media: images
           path: images/site
-      - name: heroImageAlt
-        label: Floating image description
-        description: A few words for screen readers, e.g. "Character art by @yazarts".
-        type: string
       - name: heroBackground
         label: Background illustration
-        description: Fills the whole welcome section behind everything (a dark veil keeps the text readable). Wide pictures fit best. Remove it for a plain dark navy "space" background.
+        description: Fills the welcome section. Wide pictures fit best. Remove it for a plain navy background.
         type: image
         options:
           media: images
       - name: heroTitle
         label: Title
-        description: The big word on the right, e.g. "Welcome!"
+        description: The large heading, such as Welcome.
         type: string
       - name: heroIntro
         label: Intro line
-        description: Shown under the title, followed by the "See more" button. Replace [your city] with where you are based.
+        description: Shown under the title, before the See more button.
         type: text
       - name: bioTitle
-        label: See more · heading
-        description: Heading of the panel that opens when visitors press "See more".
+        label: About me heading
+        description: Heading of the panel that opens from See more.
         type: string
       - name: bio
-        label: See more · your story
-        description: Your biography. The whole story fades in when the panel opens. Leave an empty line between paragraphs.
+        label: About me story
+        description: The full story. Leave an empty line between paragraphs.
         type: text
       - name: bioPhoto
-        label: See more · photo of you
-        description: Shown beside your story (above it on phones). A portrait-shaped photo looks best.
+        label: About me photo
+        description: Shown beside the story, and above it on phones.
         type: image
         options:
           media: images
           path: images/site
 
-  # ---------------------------------------------------------------- Portfolio
   - name: portfolio
     label: Portfolio
     type: file
@@ -76,12 +69,12 @@ content:
     fields:
       - name: artworks
         label: Artworks
-        description: Drag the handle to reorder; the first one is the big tile on the left. Tiles are cropped into a mix of shapes for the brick look, but tapping one always shows your full, uncropped original.
+        description: Drag to reorder. The first one is the tall tile on the left. Tapping a tile shows the full original.
         type: object
         list:
           collapsible:
             collapsed: true
-            summary: "{index}. {image}"
+            summary: "{index}. Artwork"
         fields:
           - name: image
             label: Image
@@ -92,10 +85,9 @@ content:
               path: images/artworks
           - name: featured
             label: Show bigger
-            description: Makes this piece a big tile (as tall as both rows). The first artwork is always big on computers and tablets.
+            description: Makes this piece a tall tile. The first artwork is always tall on computers and tablets.
             type: boolean
 
-  # -------------------------------------------------------------- Commissions
   - name: commissions
     label: Commissions
     type: file
@@ -103,74 +95,73 @@ content:
     format: json
     fields:
       - name: open
-        label: Commissions open?
-        description: On shows an "Available for commissions" badge. Off shows "Commissions closed". The site uses whatever you save here.
+        label: Commissions open
+        description: On shows a green Available badge. Off shows Commissions closed.
         type: boolean
       - name: openText
-        label: Message when commissions are OPEN
+        label: Message when open
         type: text
       - name: closedText
-        label: Message when commissions are CLOSED
+        label: Message when closed
         type: text
       - name: testimonial
-        label: Testimonial (optional)
-        description: A real quote from someone you have worked with. Leave this empty and nothing is shown. The site will not invent a quote.
+        label: Testimonial
+        description: A real quote from someone you have worked with. Leave empty to hide it.
         type: text
       - name: testimonialBy
-        label: Who said it (optional)
-        description: Their name, or however you want them credited. Shown only when the quote above is filled in.
+        label: Testimonial name
+        description: Shown only when the quote above is filled in.
         type: string
       - name: tiers
-        label: Commission types (slides)
-        description: One entry per slide. Add an entry for a new type, drag the handle to reorder, or remove one. The slides switch every 5 seconds. Tapping a slide's photos opens them full screen, and the arrows stay inside that type.
+        label: Commission types
+        description: One slide each. Drag to reorder. Tapping the photos opens only that type, full screen.
         type: object
         list:
           collapsible:
             collapsed: true
             summary: "{index}. {name}"
         fields:
-          - name: images
-            label: Example photos
-            description: Add as many as you like. Drag to reorder; the first photo is the front of the stack. Remove every photo to show only the text. The same photo cannot be added twice.
-            type: image
-            options:
-              media: images
-              path: images/commissions
-              multiple: true
-              unique: true
           - name: name
             label: Name
-            description: e.g. Portraits, Half Body, Full Body Character
+            description: Portraits, Half Body, Full Body Character, and so on.
             type: string
             required: true
           - name: description
             label: Description
             type: text
+          - name: photos
+            label: Photos
+            description: Add, remove, or drag to reorder. The first photo sits in front. One photo shows alone. Two or more show as a stack.
+            type: image
+            list: true
+            options:
+              media: images
+              path: images/commissions
           - name: notes
-            label: Notes (optional)
-            description: Small text under the description.
+            label: Note
+            description: Short line under the description. Leave empty to hide it.
             type: text
 
-  # -------------------------------------------------------- Contact & socials
   - name: contact
-    label: Contact & socials
+    label: Contact
     type: file
     path: content/contact.json
     format: json
     fields:
       - name: buttonLabel
-        label: Button text (under the commission slides)
+        label: Button text
+        description: The button under the commission slides.
         type: string
       - name: contactText
         label: Text above the icons
         type: string
       - name: email
         label: Email address
-        description: Shown as an envelope that opens a new email. Type the address (name@example.com) or a mailto: link. Leave it empty to hide the envelope. This does not send anything by itself.
+        description: A plain address or a mailto link. Leave empty to hide the envelope.
         type: string
       - name: links
         label: Social links
-        description: Drag to reorder. Instagram, TikTok, Reddit, Ko-fi, X and YouTube get their own icons automatically. Email uses the Email address field above, not a link here.
+        description: Drag to reorder. Instagram, TikTok, Reddit, Ko-fi, X, and YouTube get their own icons. Put email in the Email address field.
         type: object
         list:
           collapsible:
@@ -178,16 +169,16 @@ content:
             summary: "{label}"
         fields:
           - name: label
-            label: Name (e.g. Instagram)
+            label: Name
             type: string
             required: true
           - name: url
-            label: Link (starts with https://)
+            label: Link
+            description: Must start with https://
             type: string
             required: true
             pattern: ^https?://.+
 
-  # ------------------------------------------------------------ Site settings
   - name: site
     label: Site settings
     type: file
@@ -196,11 +187,18 @@ content:
     fields:
       - name: siteName
         label: Site name
-        description: Shown top-left next to the music button, and in the footer.
+        description: Shown beside the logo and in the footer.
         type: string
+      - name: logo
+        label: Logo
+        description: The signature in the header. A transparent PNG works best.
+        type: image
+        options:
+          media: images
+          path: images/site
       - name: music
         label: Background music
-        description: Optional; plays softly on a loop (mp3, m4a, ogg or wav). Remove it to turn the music off.
+        description: Plays softly on a loop. Remove the file to turn the music off.
         type: file
         options:
           media: music
