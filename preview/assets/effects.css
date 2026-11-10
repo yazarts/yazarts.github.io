@@ -1,0 +1,58 @@
+/* Motion preview. Transform and opacity only. Loaded after the live stylesheet, and only from /preview/. */
+
+.preview-flag{position:fixed;right:12px;bottom:12px;z-index:60;margin:0;pointer-events:none;
+  font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#d7ebf8;
+  background:rgba(12,20,32,.82);border:1px solid rgba(156,195,230,.45);border-radius:99px;padding:.28rem .6rem}
+html.intro-on .preview-flag{opacity:0}
+
+html[data-preview]:not(.intro-done) .brand-logo{opacity:0}
+html.intro-on,html.intro-on body{overflow:hidden}
+
+.intro{position:fixed;inset:0;z-index:220;background:transparent}
+.intro-navy{position:absolute;inset:0;background:#0c1420}
+.intro-sig{position:absolute;left:50%;top:46%;width:118px;height:193px;margin-left:-59px;margin-top:-96px;transform-origin:50% 50%}
+.intro-band{position:absolute;inset:0}
+.intro-draw{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.intro-draw path{fill:none;stroke:#9cc3e6;stroke-linecap:round;stroke-linejoin:round}
+.intro-png{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0}
+.intro-glow{position:absolute;left:50%;top:42%;width:150px;height:150px;border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(circle,rgba(156,195,230,.8) 0%,rgba(111,156,196,.22) 46%,rgba(12,20,32,0) 72%);
+  transform:translate3d(-50%,-50%,0) scale(.6)}
+.intro-ink{position:absolute;left:50%;top:46%;width:160px;height:160px;border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(circle,rgba(168,205,232,.72) 0%,rgba(111,156,196,.28) 40%,rgba(12,20,32,0) 70%);
+  transform:translate3d(-50%,-50%,0) scale(.2)}
+
+.has-brush{position:relative}
+.brush{position:absolute;inset:0;z-index:5;overflow:hidden;pointer-events:none}
+.brush svg{position:absolute;left:0;top:6%;width:68%;height:88%;opacity:0;transform:translate3d(-130%,0,0)}
+.brush.go svg{animation:brushSwipe .9s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes brushSwipe{
+  0%{transform:translate3d(-130%,0,0) rotate(-7deg);opacity:.92}
+  60%{opacity:.88}
+  100%{transform:translate3d(170%,0,0) rotate(5deg);opacity:0}
+}
+
+html[data-preview] .tier-media{perspective:900px}
+html[data-preview] .stack{transform-style:preserve-3d}
+html[data-preview] .sheen{position:absolute;inset:-30%;z-index:4;pointer-events:none;border-radius:inherit;opacity:0;
+  background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.34) 50%,transparent 62%)}
+
+@media (prefers-reduced-motion:no-preference){
+  html[data-preview] .hero.bg-ok .hero-bg img{transform:scale(1.14)}
+  html[data-preview] .stack.multi .card{transition:transform .45s cubic-bezier(.2,.75,.2,1)}
+  html[data-preview] .tier.on .stack.multi .c0{transform:translate3d(-12%,3%,0) rotate(-13deg)}
+  html[data-preview] .tier.on .stack.multi .c1{transform:translate3d(16%,-7%,0) rotate(12deg)}
+  html[data-preview] .tier.on .stack.multi .c2{transform:translate3d(1%,13%,0) rotate(3deg)}
+  html[data-preview] .tier.on .stack.multi:hover .c0,
+  html[data-preview] .tier.on .stack.multi:active .c0{transform:translate3d(-20%,1%,0) rotate(-18deg)}
+  html[data-preview] .tier.on .stack.multi:hover .c1,
+  html[data-preview] .tier.on .stack.multi:active .c1{transform:translate3d(24%,-12%,0) rotate(16deg)}
+  html[data-preview] .tier.on .stack.multi:hover .c2,
+  html[data-preview] .tier.on .stack.multi:active .c2{transform:translate3d(4%,18%,0) rotate(6deg)}
+  html[data-preview] .lb-flyer{z-index:8;will-change:transform}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .intro,.brush{display:none!important}
+  html[data-preview] .stack.multi .card{transition:none}
+}
