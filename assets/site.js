@@ -92,9 +92,21 @@
   let locks = 0;
   function lockScroll(d) {
     const was = locks; locks = Math.max(0, locks + d);
-    if (!was && locks) { const sb = innerWidth - document.documentElement.clientWidth; document.body.style.overflow = 'hidden'; if (sb > 0) document.body.style.paddingRight = sb + 'px'; }
+    if (!was && locks) {
+      document.body.style.overflow = 'hidden';
+      // Only a real desktop scrollbar. On iPad, innerWidth and clientWidth disagree during rotation and a large padding pushes the page sideways.
+      const sb = innerWidth - document.documentElement.clientWidth;
+      document.body.style.paddingRight = sb > 0 && sb < 24 ? sb + 'px' : '';
+    }
     if (was && !locks) { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }
   }
+  // The wide portfolio track can leave the visual viewport scrolled sideways after an iPad rotation.
+  function pinX() {
+    if (document.documentElement.scrollLeft) document.documentElement.scrollLeft = 0;
+    if (document.body.scrollLeft) document.body.scrollLeft = 0;
+  }
+  addEventListener('orientationchange', () => { pinX(); requestAnimationFrame(pinX); setTimeout(pinX, 350); });
+  addEventListener('resize', pinX);
 
   // ---------- welcome section ----------
   const hero = $('#home'), heroImg = $('#heroImg'), heroBg = $('#heroBg');
@@ -364,7 +376,7 @@
   })();
 
   // ---------- viewer: full-screen artwork only; shared-element open/close, swipe carousel, pinch/double-tap zoom ----------
-  const lb = $('#lb'), stage = $('#lbStage'), track = $('#lbTrack'), tintEl = $('#lbTint'), glowEl = $('#lbGlow');
+  const lb = $('#lb'), stage = $('#lbStage'), track = $('#lbTrack'), tintEl = $('#lbTint');
   const EASE = 'cubic-bezier(.22,.8,.24,1)', GAP = 28;
   let idx = 0, panelI = -1, lastFocus = null, W = 0, offset = 0, pendingK = 0, animTimer = 0, closing = false, flyer = null;
   let ctx = { list: [], grid: null, tint: null };      // what the viewer is showing: the portfolio or the commission examples
@@ -428,7 +440,6 @@
     const t = ctx.tint || colourOf(src, tileImg(i)) || colourOf(src, slides.find(s => +s.dataset.i === i)?.firstElementChild);
     const s = t ? Math.round(t.s * 100) : 0;
     tintEl.style.backgroundColor = t ? `hsl(${t.h} ${s}% 13% / .86)` : 'rgba(12,20,32,.7)';    // lightness clamped to 13%: dark, art stays the focus
-    glowEl.style.backgroundColor = t ? `hsl(${t.h} ${Math.min(80, s + 15)}% 34%)` : 'transparent';
     lb.dataset.tint = t ? `${t.h},${s}` : '';
   }
 

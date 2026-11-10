@@ -7,8 +7,8 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
-html{scroll-behavior:smooth;scroll-padding-top:var(--nav-h);-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+html{scroll-behavior:smooth;scroll-padding-top:var(--nav-h);-webkit-text-size-adjust:100%;overflow-x:clip;max-width:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased;overflow-x:clip;max-width:100%}
 a{color:inherit;text-decoration:none}
 img{display:block;max-width:100%}
 button{font:inherit;color:inherit}
@@ -18,7 +18,7 @@ button{font:inherit;color:inherit}
 .skip:focus{left:8px}
 
 /* ---------- nav ---------- */
-.nav{position:fixed;inset:0 0 auto;z-index:50;height:var(--nav-h);transition:background .5s var(--ease),border-color .5s var(--ease);border-bottom:1px solid transparent}
+.nav{position:fixed;top:0;left:0;width:100%;max-width:100%;z-index:50;height:var(--nav-h);transition:background .5s var(--ease),border-color .5s var(--ease);border-bottom:1px solid transparent}
 .nav.solid{background:rgba(12,20,32,.96);border-color:var(--line)}
 .nav-inner{max-width:1200px;height:100%;margin:0 auto;padding:0 clamp(18px,4vw,40px);display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:.6rem;font-family:var(--head);font-weight:700;font-size:1.2rem;letter-spacing:.01em}
@@ -125,9 +125,9 @@ html.js body.loaded .hero-text>:nth-child(1){transition-delay:.04s}.html.js body
    Smooth swiping: plain native overflow scrolling (no scroll-snap, no JS on touch), no mask-image or backdrop-filter on or over
    the scrolling layer (both force Safari to re-rasterise every frame), no hover transforms on touch, and every tile's size is
    fixed before its image loads, so nothing shifts while the band moves. */
-#portfolio{max-width:none;padding-top:clamp(18px,3vw,36px);padding-left:0;padding-right:0}
-.pf-wrap{position:relative}
-.pf-scroll{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scrollbar-width:thin;scrollbar-color:rgba(210,190,160,.25) transparent;
+#portfolio{max-width:100%;overflow-x:clip;padding-top:clamp(18px,3vw,36px);padding-left:0;padding-right:0}
+.pf-wrap{position:relative;max-width:100%}
+.pf-scroll{max-width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scrollbar-width:thin;scrollbar-color:rgba(210,190,160,.25) transparent;
   padding:6px clamp(18px,4vw,40px) 14px;scroll-padding:0 clamp(18px,4vw,40px);cursor:grab}
 .no-scroll .pf-scroll{cursor:default}
 .dragging .pf-scroll{cursor:grabbing}
@@ -288,10 +288,7 @@ html.js .fade.in{opacity:1}
 .lb-bg,.lb-tint{position:absolute;inset:0;opacity:0;transition:opacity .42s var(--ease)}
 .lb-bg{background:rgba(5,8,13,.92)}
 .lb-tint{background-color:rgba(12,20,32,.7);transition:opacity .42s var(--ease),background-color .9s var(--ease)}
-.lb-glow{position:absolute;left:50%;top:42%;width:min(80vmin,720px);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);
-  opacity:0;pointer-events:none;transition:opacity .6s var(--ease),background-color .9s var(--ease)}
 .lightbox.open .lb-bg,.lightbox.open .lb-tint{opacity:1}
-.lightbox.open .lb-glow{opacity:.5}
 .lb-stage{position:relative;overflow:hidden;min-height:0;cursor:grab}
 .lb-stage.dragging{cursor:grabbing}
 .lb-track{position:absolute;top:0;left:0;width:100%;height:100%}
