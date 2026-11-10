@@ -1,5 +1,4 @@
-/* Motion preview: ink intro, hero parallax, brush wipes, tilting cards.
-   The shared-element viewer and the fanned stack live in preview/assets/site.js and effects.css.
+/* Motion preview: centered ink intro, hero parallax, tilting cards.
    Nothing here runs unless the page is marked data-preview. */
 (() => {
   if (document.documentElement.dataset.preview !== '1') return;
@@ -129,41 +128,6 @@
     }
   }
 
-  const brushSvg = '<svg viewBox="0 0 800 220" preserveAspectRatio="none" aria-hidden="true">'
-    + '<path fill="#6f9cc4" d="M8 128C78 36 160 196 268 118c92-66 154-92 236 8 74 90 148 104 214-16 28-40 62-62 74-28v78c-36 48-124 16-206 72-96 64-168 8-258-36-78-36-150 28-214 8-18-8-22-18-14-36z"/>'
-    + '<path fill="#a8754a" d="M36 148C112 64 198 206 312 128c86-58 168-84 236 4 58 74 130 96 196-8v60c-48 42-136 8-214 62-104 70-176 4-268-42C168 164 86 206 24 158 4 144 8 160 36 148z"/>'
-    + '</svg>';
-  ['#portfolio', '#commissions'].forEach((sel) => {
-    const section = $(sel);
-    if (!section) return;
-    const el = document.createElement('div');
-    el.className = 'brush';
-    el.setAttribute('aria-hidden', 'true');
-    el.innerHTML = brushSvg;
-    section.classList.add('has-brush');
-    section.appendChild(el);
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        if (!e.isIntersecting || document.documentElement.classList.contains('intro-on')) return;
-        el.classList.add('go');
-        io.disconnect();
-        const svg = el.querySelector('svg');
-        const done = () => { if (el.isConnected) el.remove(); };
-        svg.addEventListener('animationend', done, { once: true });
-        setTimeout(done, 1000);
-      });
-    }, { threshold: 0.22 });
-    const armBrush = () => { if (!el.isConnected) return; io.observe(section); };
-    if (document.documentElement.classList.contains('intro-on')) {
-      const wait = new MutationObserver(() => {
-        if (document.documentElement.classList.contains('intro-on')) return;
-        wait.disconnect();
-        armBrush();
-      });
-      wait.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    } else armBrush();
-  });
-
   const stage = $('#tiersStage');
   if (stage) {
     const arm = (stack) => {
@@ -190,7 +154,7 @@
       if (!r.width || !r.height) return;
       const nx = (x - r.left) / r.width - 0.5;
       const ny = (y - r.top) / r.height - 0.5;
-      stack.style.transform = 'rotateY(' + (nx * 8) + 'deg) rotateX(' + (-ny * 7) + 'deg)';
+      stack.style.transform = 'rotateY(' + (nx * 12) + 'deg) rotateX(' + (-ny * 10) + 'deg)';
       const sheen = stack.querySelector('.sheen');
       if (sheen) {
         sheen.style.opacity = '1';

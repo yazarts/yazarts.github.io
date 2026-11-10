@@ -148,16 +148,16 @@ content:
     path: content/contact.json
     format: json
     fields:
+      - name: email
+        label: Email address
+        description: The first field in Contact. Type the address only, such as name@example.com. It is shown as the envelope icon. Leave it empty to hide the envelope.
+        type: string
       - name: buttonLabel
         label: Button text
         description: The button under the commission slides.
         type: string
       - name: contactText
         label: Text above the icons
-        type: string
-      - name: email
-        label: Email address
-        description: A plain address or a mailto link. Leave empty to hide the envelope.
         type: string
       - name: links
         label: Social links

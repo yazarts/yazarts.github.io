@@ -96,9 +96,21 @@
   let locks = 0;
   function lockScroll(d) {
     const was = locks; locks = Math.max(0, locks + d);
-    if (!was && locks) { const sb = innerWidth - document.documentElement.clientWidth; document.body.style.overflow = 'hidden'; if (sb > 0) document.body.style.paddingRight = sb + 'px'; }
+    if (!was && locks) {
+      document.body.style.overflow = 'hidden';
+      // Only a real desktop scrollbar. On iPad, innerWidth and clientWidth disagree during rotation and a large padding pushes the page sideways.
+      const sb = innerWidth - document.documentElement.clientWidth;
+      document.body.style.paddingRight = sb > 0 && sb < 24 ? sb + 'px' : '';
+    }
     if (was && !locks) { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }
   }
+  // The wide portfolio track can leave the visual viewport scrolled sideways after an iPad rotation.
+  function pinX() {
+    if (document.documentElement.scrollLeft) document.documentElement.scrollLeft = 0;
+    if (document.body.scrollLeft) document.body.scrollLeft = 0;
+  }
+  addEventListener('orientationchange', () => { pinX(); requestAnimationFrame(pinX); setTimeout(pinX, 350); });
+  addEventListener('resize', pinX);
 
   // ---------- welcome section ----------
   const hero = $('#home'), heroImg = $('#heroImg'), heroBg = $('#heroBg');
@@ -368,9 +380,9 @@
   })();
 
   // ---------- viewer: full-screen artwork only; shared-element open/close, swipe carousel, pinch/double-tap zoom ----------
-  const lb = $('#lb'), stage = $('#lbStage'), track = $('#lbTrack'), tintEl = $('#lbTint'), glowEl = $('#lbGlow');
+  const lb = $('#lb'), stage = $('#lbStage'), track = $('#lbTrack'), tintEl = $('#lbTint');
   const EASE = 'cubic-bezier(.22,.8,.24,1)', GAP = 28;
-  let idx = 0, panelI = -1, lastFocus = null, W = 0, offset = 0, pendingK = 0, animTimer = 0, closing = false, flyer = null;
+  let idx = 0, panelI = -1, lastFocus = null, W = 0, offset = 0, pendingK = 0, animTimer = 0, closing = false;
   let ctx = { list: [], grid: null, tint: null };      // what the viewer is showing: the portfolio or the commission examples
   const L = () => ctx.list;
   const N = () => L().length, wrap = (i) => ((i % N()) + N()) % N();
@@ -432,7 +444,6 @@
     const t = ctx.tint || colourOf(src, tileImg(i)) || colourOf(src, slides.find(s => +s.dataset.i === i)?.firstElementChild);
     const s = t ? Math.round(t.s * 100) : 0;
     tintEl.style.backgroundColor = t ? `hsl(${t.h} ${s}% 13% / .86)` : 'rgba(12,20,32,.7)';    // lightness clamped to 13%: dark, art stays the focus
-    glowEl.style.backgroundColor = t ? `hsl(${t.h} ${Math.min(80, s + 15)}% 34%)` : 'transparent';
     lb.dataset.tint = t ? `${t.h},${s}` : '';
   }
 
@@ -579,25 +590,11 @@
   lb.addEventListener('touchmove', e => { if (e.touches.length > 1 || !e.target.closest('.lb-panel')) e.preventDefault(); }, { passive: false });
   lb.addEventListener('dblclick', e => e.preventDefault());
 
-  // ----- open / close with a shared-element "flight" between the thumbnail and the viewer -----
+  // The viewer fades open in place. No shared-element flight.
   function onScreen(el) {
     if (!el) return null; const r = el.getBoundingClientRect(), sc = el.closest('.pf-scroll')?.getBoundingClientRect();
     if (sc && (r.right < sc.left + 20 || r.left > sc.right - 20)) return null;          // hidden sideways inside the portfolio band
     return r.width && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth ? r : null;
-  }
-  function fly(from, to, src, r0, r1, ms, host = lb) {
-    flyer?.remove();
-    const g = flyer = document.createElement('div'); g.className = 'lb-flyer'; g.innerHTML = `<img alt="" src="${esc(src)}">`; host.appendChild(g);
-    const dw = Math.max(1, to.width), dh = Math.max(1, to.height);
-    // Pin the flyer at the viewport origin and move it only with translate/scale.
-    // Animating left/top inside the lightbox grid left the flight stuck at the top in WebKit.
-    g.style.left = '0px'; g.style.top = '0px'; g.style.width = dw + 'px'; g.style.height = dh + 'px';
-    g.style.transformOrigin = '0 0'; g.style.borderRadius = r1 + 'px'; g.style.zIndex = '8';
-    const sx = from.width / dw, sy = from.height / dh;
-    return g.animate([
-      { transform: `translate3d(${from.left}px, ${from.top}px, 0) scale(${sx}, ${sy})`, borderRadius: r0 + 'px' },
-      { transform: `translate3d(${to.left}px, ${to.top}px, 0) scale(1, 1)`, borderRadius: r1 + 'px' }
-    ], { duration: ms, easing: 'cubic-bezier(.2,.75,.2,1)', fill: 'forwards' }).finished.catch(() => { });
   }
   async function open(i, c) {
     if (!lb.hidden || !c?.list.length) return;
@@ -606,32 +603,16 @@
     lb.hidden = false; lockScroll(1);
     layout(); fill(0, i - 1); fill(1, i); fill(2, i + 1); setOffset(0); setPanel(i);
     $('#lbClose').focus({ preventScroll: true });
-    const thumb = tileImg(i), r0 = !reduce && onScreen(thumb), im = curImg();
     requestAnimationFrame(() => lb.classList.add('open'));
-    if (!r0) return;
-    im.style.opacity = '0'; thumb.style.visibility = 'hidden';
-    await fly(r0, im.getBoundingClientRect(), thumb.currentSrc || thumb.src, 14, 10, 420);
-    try { await im.decode(); } catch { }
-    im.style.opacity = ''; thumb.style.visibility = ''; flyer?.remove(); flyer = null;
   }
   async function close() {
     if (lb.hidden || closing) return; closing = true;
     if (animTimer) commit(); if (offset) setOffset(0);
     const im = curImg(); resetZoom(im);
-    ctx.onClose?.(idx);                       // e.g. the commission slideshow jumps to the slide that was being viewed
-    const card = ctx.grid?.querySelector(`[data-i="${idx}"]`)?.closest('.brick, .tier');
-    if (card && card.offsetParent) {
-      if (card.classList.contains('brick')) { const sc = card.closest('.pf-scroll'); const r = card.getBoundingClientRect(), R = sc.getBoundingClientRect(); if (r.left < R.left || r.right > R.right) { sc.scrollLeft = Math.max(0, card.offsetLeft - (sc.clientWidth - card.offsetWidth) / 2); pf.sync(); } }
-      if (!onScreen(card.querySelector('img'))) card.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
-    }
-    const thumb = tileImg(idx), r1 = !reduce && onScreen(thumb), r0 = im.getBoundingClientRect();
+    ctx.onClose?.(idx);
     lb.classList.remove('open');
-    if (r1 && r0.width) {
-      thumb.style.visibility = 'hidden'; im.style.opacity = '0';
-      await fly(r0, r1, im.currentSrc || im.src, 10, 14, 380);
-      thumb.style.visibility = '';
-    } else await new Promise(r => setTimeout(r, reduce ? 0 : 320));
-    lb.hidden = true; im.style.opacity = ''; flyer?.remove(); flyer = null; lockScroll(-1); closing = false;
+    await new Promise(r => setTimeout(r, reduce ? 0 : 280));
+    lb.hidden = true; im.style.opacity = ''; lockScroll(-1); closing = false;
     lastFocus?.focus?.({ preventScroll: true });
   }
   $('#lbClose').onclick = close; $('#lbPrev').onclick = () => go(-1); $('#lbNext').onclick = () => go(1);
