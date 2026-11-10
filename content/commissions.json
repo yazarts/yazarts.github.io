@@ -1,5 +1,5 @@
 {
-  "open": true,
+  "open": false,
   "openText": "Commissions are open! Message me on Instagram, tiktok or Reddit with your idea and I'll get back to you. You can also support my work on Ko-fi.",
   "closedText": "Commissions are closed for now. Follow me on Instagram or TikTok to hear when they reopen, or support my work on Ko-fi.",
   "tiers": [
@@ -8,8 +8,8 @@
       "description": "A head-and-shoulders portrait of your character or OC, fully coloured and shaded, with a simple background.",
       "photos": [
         "/images/commissions/img-20261108-wa0005.jpg",
-        "/images/commissions/img-20261108-wa0005.jpg",
-        "/images/commissions/img-20261108-wa0005.jpg"
+        "/images/commissions/img1164.jpeg",
+        "/images/commissions/img1603.jpeg"
       ],
       "notes": "Example: replace with your own art."
     },
