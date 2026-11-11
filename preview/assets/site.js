@@ -359,20 +359,23 @@
     function ui() { const p = playing(); btn.classList.toggle('playing', p); btn.setAttribute('aria-pressed', p); btn.setAttribute('aria-label', p ? 'Mute background music' : 'Play background music'); }
     function start() { if (!bg.getAttribute('src')) return Promise.reject(new Error('none')); bg.volume = 0; return (bg.play() || Promise.resolve()).then(() => { fade(VOL, 900); ui(); }); }
     function stop() { if (!bg.paused) fade(0, 450, () => { bg.pause(); ui(); }); }
-    // browsers block autoplay with sound until the visitor interacts, so start on the first click / tap / key press anywhere
+    // iOS only starts audio inside a real tap, click or key press. Scrolling is not a gesture it accepts.
+    const gestureEvents = ['pointerdown', 'touchend', 'click', 'keydown'];
     function waitForGesture() {
-      if (waiting) return; waiting = true;
+      if (waiting || !on) return; waiting = true;
       const go = (e) => {
         if (e.target?.closest?.('#musicBtn')) return;      // the music button handles its own click
-        ['pointerdown', 'keydown', 'touchend'].forEach(t => removeEventListener(t, go, true)); waiting = false;
-        if (on) start().catch(() => { });
+        gestureEvents.forEach(t => removeEventListener(t, go, true)); waiting = false;
+        if (on && !playing()) start().catch(() => { });
       };
-      ['pointerdown', 'keydown', 'touchend'].forEach(t => addEventListener(t, go, true));
+      gestureEvents.forEach(t => addEventListener(t, go, true));
     }
     function setBg(src) {
       if (!src) { btn.hidden = true; return; }
       bg.src = src; bg.loop = true; bg.preload = 'auto'; btn.hidden = false; ui();
-      if (on) start().catch(() => waitForGesture());
+      if (!on) return;
+      start().catch(() => { });
+      waitForGesture();
     }
     btn.addEventListener('click', () => { if (playing()) { on = false; stop(); } else { on = true; start().catch(() => { }); } store.set('yaz.sound', on); ui(); });
     ['play', 'pause', 'ended'].forEach(t => bg.addEventListener(t, ui));
@@ -389,6 +392,29 @@
   const tileImg = (i) => ctx.grid?.querySelector(`[data-i="${i}"] img`);
   const slides = [0, 1, 2].map(() => { const s = document.createElement('div'); s.className = 'lb-slide'; s.innerHTML = '<img alt="" draggable="false">'; track.appendChild(s); return s; });
   const curImg = () => slides[1].firstElementChild;   // slides = [previous, current, next]
+  // Full-resolution originals. A slide is only swapped in after its file has decoded, so WebKit never paints a half-loaded frame.
+  const decoded = new Set(), loading = new Map();
+  let navToken = 0;
+  const srcAt = (i) => { const a = L()[wrap(i)]; return a && a.image ? asset(a.image) : ''; };
+  function preload(src) {
+    if (!src || decoded.has(src)) return Promise.resolve(!!src && decoded.has(src));
+    if (loading.has(src)) return loading.get(src);
+    const p = new Promise(resolve => {
+      const im = new Image();
+      const finish = async (ok) => {
+        if (ok) { try { await im.decode(); } catch { } if (im.naturalWidth > 0) decoded.add(src); }
+        loading.delete(src);
+        resolve(decoded.has(src));
+      };
+      im.onload = () => finish(true);
+      im.onerror = () => finish(false);
+      im.src = src;
+      if (im.complete) finish(im.naturalWidth > 0);
+    });
+    loading.set(src, p);
+    return p;
+  }
+  const warm = (i) => { preload(srcAt(i)); preload(srcAt(i - 1)); preload(srcAt(i + 1)); };
 
   // size each image to "contain" inside its slide (explicit size so small images still fill the space and zoom maths stay exact)
   function fit(im) {
@@ -404,7 +430,13 @@
     im.style.backgroundImage = '';
     if (im.getAttribute('src') !== src) {
       im.style.opacity = '';
-      im.onload = () => { fit(im); if (j === panelI) setTint(j); }; im.src = src;
+      im.onload = async () => {
+        try { await im.decode(); } catch { }
+        if (im.naturalWidth > 0) decoded.add(src);
+        fit(im); if (j === panelI) setTint(j);
+      };
+      im.src = src;
+      preload(src);
     }
     fit(im);
   }
@@ -457,9 +489,26 @@
   // ----- carousel -----
   function go(k, v = 0) {
     if (N() < 2) k = 0;
+    const dir = k > 0 ? 1 : k < 0 ? -1 : 0;
+    if (dir) {
+      const src = srcAt(idx + dir);
+      if (src && !decoded.has(src)) {
+        if (animTimer) { clearTimeout(animTimer); animTimer = 0; }
+        pendingK = 0; setOffset(0, 160);
+        lb.classList.add('lb-wait');
+        const token = ++navToken;
+        preload(src).then(ok => {
+          if (token !== navToken || lb.hidden) return;
+          lb.classList.remove('lb-wait');
+          if (ok) go(dir, v);
+        });
+        return;
+      }
+    }
     if (animTimer) commit();
     const target = -k * (W + GAP), dist = Math.abs(target - offset);
     pendingK = k; setPanel(wrap(idx + k));
+    warm(idx + k);
     if (reduce || dist < 1) { setOffset(target); commit(); return; }
     const sp = Math.abs(v), ms = Math.round(Math.max(200, Math.min(460, sp > 0.25 ? dist / sp * 1.8 : 240 + dist * 0.25)));
     setOffset(target, ms); animTimer = setTimeout(commit, ms + 20);
@@ -548,6 +597,8 @@
       else if (Math.abs(dy) > 12) gest = 'none';
     } else if (gest === 'drag') {
       let x = st.off + (e.clientX - st.x); if (N() < 2) x *= 0.3;
+      const dir = x < -8 ? 1 : x > 8 ? -1 : 0;
+      if (dir && !decoded.has(srcAt(idx + dir))) { x = 0; lb.classList.add('lb-wait'); const held = srcAt(idx + dir); preload(held).then(() => lb.classList.remove('lb-wait')); }
       setOffset(x); const t = performance.now(); samples.push({ x: e.clientX, t }); while (samples.length > 2 && t - samples[0].t > 100) samples.shift();
     } else if (gest === 'pan') {
       const z = zs(im); applyZ(im, clampZ(im, { s: z.s, tx: st.tx + dx, ty: st.ty + dy }));
@@ -604,6 +655,7 @@
     layout(); fill(0, i - 1); fill(1, i); fill(2, i + 1); setOffset(0); setPanel(i);
     $('#lbClose').focus({ preventScroll: true });
     requestAnimationFrame(() => lb.classList.add('open'));
+    warm(i);
   }
   async function close() {
     if (lb.hidden || closing) return; closing = true;

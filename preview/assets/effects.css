@@ -33,8 +33,6 @@ html.intro-on,html.intro-on body{overflow:hidden}
 
 html[data-preview] .tier-media{perspective:900px}
 html[data-preview] .stack{transform-style:preserve-3d}
-html[data-preview] .sheen{position:absolute;inset:-20%;z-index:4;pointer-events:none;border-radius:inherit;opacity:0;
-  background:linear-gradient(115deg,transparent 28%,rgba(255,255,255,.62) 50%,transparent 72%)}
 
 /* The fan stays inside the photo column. Cards are smaller and the right-hand one no longer swings into the title. */
 html[data-preview] .stack.multi .card{width:58%;height:62%}
@@ -42,21 +40,33 @@ html[data-preview] .stack.multi .c0{left:20%;top:18%;transform:rotate(-6deg)}
 html[data-preview] .stack.multi .c1{left:22%;top:14%;transform:rotate(6deg)}
 html[data-preview] .stack.multi .c2{left:10%;top:20%;transform:rotate(-4deg)}
 
-/* Headings, the hero title, nav links and section titles. Body text stays Quicksand / Nunito. Nanum draws small, so these sizes are larger. */
-html[data-preview] h1,
-html[data-preview] h2,
-html[data-preview] h3,
-html[data-preview] .brand,
-html[data-preview] .nav nav a{
-  font-family:"Nanum Brush Script","Quicksand",cursive;
-  font-weight:400;
-  letter-spacing:.01em;
+/* Nanum Brush Script for every word. It draws small, so body sizes are lifted. Quicksand is not used. */
+html[data-preview]{
+  --head:"Nanum Brush Script",cursive;
+  --body:"Nanum Brush Script",cursive;
 }
+html[data-preview] body{
+  font-family:"Nanum Brush Script",cursive;
+  font-size:1.32rem;
+  line-height:1.45;
+}
+html[data-preview] button,
+html[data-preview] input,
+html[data-preview] textarea{font-family:"Nanum Brush Script",cursive}
 html[data-preview] .hero h1{font-size:clamp(4.4rem,11vw,8.6rem);line-height:.95}
-html[data-preview] .section-head h2{font-size:clamp(2.5rem,4.8vw,3.4rem);line-height:1}
+html[data-preview] .section-head h2{font-size:clamp(2.6rem,5vw,3.5rem);line-height:1}
 html[data-preview] .tier-name{font-size:clamp(3.1rem,6.2vw,5.1rem);line-height:1}
-html[data-preview] .nav nav a{font-size:1.5rem}
-html[data-preview] .brand{font-size:1.9rem}
+html[data-preview] .nav nav a{font-size:1.55rem}
+html[data-preview] .brand{font-size:1.95rem}
+html[data-preview] .hero-intro,
+html[data-preview] .tier-desc,
+html[data-preview] .comm-text,
+html[data-preview] .bio-text{font-size:1.4rem;line-height:1.45}
+html[data-preview] .pill{font-size:1.28rem}
+html[data-preview] .install-btn,
+html[data-preview] .foot,
+html[data-preview] .comm-kicker{font-size:1.2rem}
+html[data-preview] .hero-lines{display:none}
 
 /* Faint canvas grain over the navy. */
 html[data-preview]::before{
@@ -64,34 +74,46 @@ html[data-preview]::before{
   background:url("grain.png");opacity:.055;mix-blend-mode:overlay;
 }
 
-/* A soft, irregular edge on photos and buttons. Not on the scrolling band itself. */
+/* Photos and buttons keep the live site's rounded rectangles. No brush mask. */
 html[data-preview] .tile,
 html[data-preview] .stack .card,
 html[data-preview] .pill,
 html[data-preview] .install-btn{
-  -webkit-mask-image:url("edge.svg");
-  mask-image:url("edge.svg");
-  -webkit-mask-size:100% 100%;
-  mask-size:100% 100%;
-  -webkit-mask-repeat:no-repeat;
-  mask-repeat:no-repeat;
+  -webkit-mask-image:none;
+  mask-image:none;
 }
 
-/* Thin hand-drawn underlines. */
+/* Hand-drawn underline as wide as the words themselves. */
 html[data-preview] .nav nav a::after{
-  left:0;right:0;bottom:-7px;height:8px;border-radius:0;
+  left:0;right:0;width:auto;bottom:-7px;height:8px;border-radius:0;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'%3E%3Cpath d='M1 5C18 2 34 7 52 4s34 3 50 1 16 2 17-1' fill='none' stroke='%23d2ab7c' stroke-width='1.3' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
   opacity:0;transform:none;
 }
 html[data-preview] .nav nav a.active::after,
 html[data-preview] .nav nav a:hover::after{left:0;right:0;opacity:.9}
+html[data-preview] .hero h1,
 html[data-preview] .section-head h2,
-html[data-preview] .hero h1{
+html[data-preview] .tier-name,
+html[data-preview] .bio-body h2{
+  display:inline-block;width:auto;max-width:100%;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'%3E%3Cpath d='M1 5C22 2 40 7 62 3s36 4 57 2' fill='none' stroke='%23a8754a' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-size:min(220px,70%) 9px;padding-bottom:.15em;
+  background-repeat:no-repeat;background-position:left bottom;background-size:100% 10px;padding-bottom:.2em;
 }
-html[data-preview] .section-head h2{background-position:left bottom}
-html[data-preview] .hero h1{background-position:right bottom}
+
+/* Music off: the four bars only, no diagonal slash. */
+html[data-preview] .mute-line{display:none}
+html[data-preview] .eq i{opacity:.9;height:7px}
+
+/* Small mark while the next full-resolution artwork is still decoding. */
+html[data-preview] .lightbox.lb-wait::after{
+  content:"";position:absolute;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));width:16px;height:16px;margin-left:-8px;
+  border-radius:50%;border:2px solid rgba(236,228,216,.28);border-top-color:#d2ab7c;z-index:6;
+  animation:lbspin .7s linear infinite;
+}
+@keyframes lbspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  html[data-preview] .lightbox.lb-wait::after{animation:none;border-top-color:rgba(236,228,216,.28);background:#d2ab7c}
+}
 
 /* Torn edge where the hero meets the page, in deep brown. */
 html[data-preview] .hero::before{
