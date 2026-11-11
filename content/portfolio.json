@@ -1,31 +1,32 @@
 {
   "artworks": [
     {
-      "image": "/images/artworks/giant-girl-lake.jpg"
+      "image": "/images/artworks/giant-girl-lake.jpg",
+      "featured": false
     },
     {
-      "image": "/images/artworks/img1593.jpeg"
+      "image": "/images/artworks/img1593.jpeg",
+      "featured": false
     },
     {
-      "image": "/images/artworks/img1452.jpeg"
+      "image": "/images/artworks/img1452.jpeg",
+      "featured": false
     },
     {
-      "image": "/images/artworks/img1504.jpeg"
+      "image": "/images/artworks/img1504.jpeg",
+      "featured": false
     },
     {
-      "image": "/images/artworks/img1600.jpeg"
+      "image": "/images/artworks/img1600.jpeg",
+      "featured": false
     },
     {
-      "image": "/images/artworks/Untitled192.jpg"
+      "image": "/images/artworks/Untitled192.jpg",
+      "featured": false
     },
     {
-      "image": "/images/artworks/placeholder-6.svg"
-    },
-    {
-      "image": "/images/artworks/placeholder-7.svg"
-    },
-    {
-      "image": "/images/artworks/placeholder-8.svg"
+      "image": "/images/artworks/placeholder-6.svg",
+      "featured": false
     }
   ]
 }
