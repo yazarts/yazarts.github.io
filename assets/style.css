@@ -381,7 +381,7 @@ button,input,textarea{font-family:var(--body)}
 .hero-cta{margin-top:0}
 .hero-tools{position:relative;display:flex;align-items:center;gap:10px}
 .hero-tools .music-btn{width:46px;height:46px;border:1px solid rgba(207,224,238,.35);background:rgba(12,20,32,.35);color:#cfe0ee}
-.noai-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.noai-btn svg{width:28px;height:28px;display:block}
 .noai-pop{position:absolute;right:0;bottom:calc(100% + 12px);width:min(340px,78vw);margin:0;padding:16px 40px 16px 16px;border-radius:16px;background:#152234;border:1px solid var(--line);color:#ece4d8;font-size:1.15rem;line-height:1.35;text-align:left;box-shadow:0 18px 40px -20px rgba(0,0,0,.85);z-index:5}
 .noai-x{position:absolute;top:4px;right:8px;border:0;background:none;color:#ece4d8;font-size:1.5rem;line-height:1;cursor:pointer;padding:4px}
 .mute-line{display:none}
