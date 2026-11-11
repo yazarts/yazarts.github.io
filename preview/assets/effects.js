@@ -130,36 +130,13 @@
 
   const stage = $('#tiersStage');
   if (stage) {
-    const arm = (stack) => {
-      if (!stack || stack.querySelector('.sheen')) return;
-      const sheen = document.createElement('span');
-      sheen.className = 'sheen';
-      sheen.setAttribute('aria-hidden', 'true');
-      stack.appendChild(sheen);
-    };
-    const reset = (stack) => {
-      if (!stack) return;
-      stack.style.transform = '';
-      const sheen = stack.querySelector('.sheen');
-      if (sheen) sheen.style.opacity = '0';
-    };
-    const paint = () => stage.querySelectorAll('.stack').forEach((stack) => {
-      arm(stack);
-      if (!stack.closest('.tier.on')) reset(stack);
-    });
-    new MutationObserver(paint).observe(stage, { childList: true, subtree: true });
-    paint();
+    const reset = (stack) => { if (stack) stack.style.transform = ''; };
     const tilt = (stack, x, y) => {
       const r = stack.getBoundingClientRect();
       if (!r.width || !r.height) return;
       const nx = (x - r.left) / r.width - 0.5;
       const ny = (y - r.top) / r.height - 0.5;
       stack.style.transform = 'rotateY(' + (nx * 12) + 'deg) rotateX(' + (-ny * 10) + 'deg)';
-      const sheen = stack.querySelector('.sheen');
-      if (sheen) {
-        sheen.style.opacity = '1';
-        sheen.style.transform = 'translate3d(' + (nx * 36) + '%, ' + (ny * 28) + '%, 0)';
-      }
     };
     stage.addEventListener('pointermove', (e) => {
       const stack = e.target.closest('.stack');
