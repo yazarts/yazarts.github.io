@@ -24,13 +24,6 @@ content:
     path: content/welcome.json
     format: json
     fields:
-      - name: heroImage
-        label: Character image
-        description: A PNG with a transparent background floats on the left. Remove it to hide it.
-        type: image
-        options:
-          media: images
-          path: images/site
       - name: heroBackground
         label: Background illustration
         description: Fills the welcome section. Wide pictures fit best. Remove it for a plain navy background.
@@ -60,6 +53,10 @@ content:
         options:
           media: images
           path: images/site
+      - name: noAiText
+        label: No AI note
+        description: Shown when someone taps the No AI button in the welcome section. Leave empty to use the standard hand-drawn note.
+        type: text
 
   - name: portfolio
     label: Portfolio

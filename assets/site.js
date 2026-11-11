@@ -2,8 +2,9 @@
   const $ = (s) => document.querySelector(s);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  // CMS stores paths like "/images/x.jpg"; make them relative so the site works at the domain root (yazarts.github.io) AND under any sub-path
-  const asset = (p) => !p ? '' : /^(https?:)?\/\//.test(p) ? p : String(p).replace(/^\/+/, '');
+  // CMS stores paths like "/images/x.jpg"; make them relative so the site works at the domain root.
+  const relPath = (p) => !p ? '' : /^(https?:)?\/\//.test(p) ? p : String(p).replace(/^\/+/, '');
+  const asset = (p) => relPath(p);
   const json = (u) => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(u); return r.json(); });
   const store = {
     get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
@@ -11,8 +12,8 @@
   };
   let art = [], tiers = [], thumbs = {}, sizes = {};
   // grid previews + image sizes are generated at deploy time (content/thumbs.json); the viewer always loads the untouched original
-  const clean = (p) => asset(p).split(/[?#]/)[0];
-  const thumb = (p) => thumbs[clean(p)] || asset(p);
+  const clean = (p) => relPath(p).split(/[?#]/)[0];
+  const thumb = (p) => { const t = thumbs[clean(p)]; return asset(t || p); };
   const sizeOf = (p) => sizes[clean(p)] || null;          // [w, h] or null
   // A tier's photos: the CMS list (first = front of the stack), plus a legacy single `image` if it isn't already there.
   // Same file twice (old field + new list, or a repeated upload) is kept once, so a one-photo tier stays one photo.
@@ -109,15 +110,14 @@
   addEventListener('resize', pinX);
 
   // ---------- welcome section ----------
-  const hero = $('#home'), heroImg = $('#heroImg'), heroBg = $('#heroBg');
+  const hero = $('#home'), heroBg = $('#heroBg');
+  const NO_AI_DEFAULT = '100% hand-drawn. Every piece here is drawn by hand by yazarts. No artificial intelligence is used to create or edit any of this artwork.';
   function renderWelcome(w) {
     if (w.heroTitle != null) $('#heroTitle').textContent = w.heroTitle;
     if (w.heroIntro != null) $('#heroIntro').textContent = w.heroIntro;
-    // floating cut-out (left)
-    if (w.heroImage) { const src = asset(w.heroImage); if (heroImg.getAttribute('src') !== src) heroImg.src = src; }
-    heroImg.alt = 'Character art by @yazarts';
-    hero.classList.toggle('no-img', w.heroImage === '' || w.heroImage === null);
-    // full-cover background illustration; without one the calm navy "space" background shows
+    const noAi = $('#noAiText');
+    if (noAi) noAi.textContent = String(w.noAiText ?? '').trim() || NO_AI_DEFAULT;
+    // full-cover background illustration; without one the calm navy background shows
     const bg = w.heroBackground;
     if (bg) {
       const orig = asset(bg), t = thumb(bg), z = sizeOf(bg);
@@ -131,10 +131,6 @@
     } else { heroBg.removeAttribute('src'); hero.classList.add('no-bg'); }
     bio.set(w);
   }
-  const heroOk = () => hero.classList.add('img-ok');
-  heroImg.complete && heroImg.naturalWidth ? heroOk() : heroImg.addEventListener('load', heroOk);
-  heroImg.addEventListener('error', () => hero.classList.add('no-img'));
-
   // ---------- "See more": the whole story is already there and fades in (no typing, no cursor) ----------
   const bio = (() => {
     const box = $('#bio'), textEl = $('#bioText'), body = $('#bioBody');
@@ -355,20 +351,23 @@
     function ui() { const p = playing(); btn.classList.toggle('playing', p); btn.setAttribute('aria-pressed', p); btn.setAttribute('aria-label', p ? 'Mute background music' : 'Play background music'); }
     function start() { if (!bg.getAttribute('src')) return Promise.reject(new Error('none')); bg.volume = 0; return (bg.play() || Promise.resolve()).then(() => { fade(VOL, 900); ui(); }); }
     function stop() { if (!bg.paused) fade(0, 450, () => { bg.pause(); ui(); }); }
-    // browsers block autoplay with sound until the visitor interacts, so start on the first click / tap / key press anywhere
+    // iOS only starts audio inside a real tap, click or key press. Scrolling is not a gesture it accepts.
+    const gestureEvents = ['pointerdown', 'touchend', 'click', 'keydown'];
     function waitForGesture() {
-      if (waiting) return; waiting = true;
+      if (waiting || !on) return; waiting = true;
       const go = (e) => {
         if (e.target?.closest?.('#musicBtn')) return;      // the music button handles its own click
-        ['pointerdown', 'keydown', 'touchend'].forEach(t => removeEventListener(t, go, true)); waiting = false;
-        if (on) start().catch(() => { });
+        gestureEvents.forEach(t => removeEventListener(t, go, true)); waiting = false;
+        if (on && !playing()) start().catch(() => { });
       };
-      ['pointerdown', 'keydown', 'touchend'].forEach(t => addEventListener(t, go, true));
+      gestureEvents.forEach(t => addEventListener(t, go, true));
     }
     function setBg(src) {
       if (!src) { btn.hidden = true; return; }
       bg.src = src; bg.loop = true; bg.preload = 'auto'; btn.hidden = false; ui();
-      if (on) start().catch(() => waitForGesture());
+      if (!on) return;
+      start().catch(() => { });
+      waitForGesture();
     }
     btn.addEventListener('click', () => { if (playing()) { on = false; stop(); } else { on = true; start().catch(() => { }); } store.set('yaz.sound', on); ui(); });
     ['play', 'pause', 'ended'].forEach(t => bg.addEventListener(t, ui));
@@ -378,13 +377,36 @@
   // ---------- viewer: full-screen artwork only; shared-element open/close, swipe carousel, pinch/double-tap zoom ----------
   const lb = $('#lb'), stage = $('#lbStage'), track = $('#lbTrack'), tintEl = $('#lbTint');
   const EASE = 'cubic-bezier(.22,.8,.24,1)', GAP = 28;
-  let idx = 0, panelI = -1, lastFocus = null, W = 0, offset = 0, pendingK = 0, animTimer = 0, closing = false, flyer = null;
+  let idx = 0, panelI = -1, lastFocus = null, W = 0, offset = 0, pendingK = 0, animTimer = 0, closing = false;
   let ctx = { list: [], grid: null, tint: null };      // what the viewer is showing: the portfolio or the commission examples
   const L = () => ctx.list;
   const N = () => L().length, wrap = (i) => ((i % N()) + N()) % N();
   const tileImg = (i) => ctx.grid?.querySelector(`[data-i="${i}"] img`);
   const slides = [0, 1, 2].map(() => { const s = document.createElement('div'); s.className = 'lb-slide'; s.innerHTML = '<img alt="" draggable="false">'; track.appendChild(s); return s; });
   const curImg = () => slides[1].firstElementChild;   // slides = [previous, current, next]
+  // Full-resolution originals. A slide is only swapped in after its file has decoded, so WebKit never paints a half-loaded frame.
+  const decoded = new Set(), loading = new Map();
+  let navToken = 0;
+  const srcAt = (i) => { const a = L()[wrap(i)]; return a && a.image ? asset(a.image) : ''; };
+  function preload(src) {
+    if (!src || decoded.has(src)) return Promise.resolve(!!src && decoded.has(src));
+    if (loading.has(src)) return loading.get(src);
+    const p = new Promise(resolve => {
+      const im = new Image();
+      const finish = async (ok) => {
+        if (ok) { try { await im.decode(); } catch { } if (im.naturalWidth > 0) decoded.add(src); }
+        loading.delete(src);
+        resolve(decoded.has(src));
+      };
+      im.onload = () => finish(true);
+      im.onerror = () => finish(false);
+      im.src = src;
+      if (im.complete) finish(im.naturalWidth > 0);
+    });
+    loading.set(src, p);
+    return p;
+  }
+  const warm = (i) => { preload(srcAt(i)); preload(srcAt(i - 1)); preload(srcAt(i + 1)); };
 
   // size each image to "contain" inside its slide (explicit size so small images still fill the space and zoom maths stay exact)
   function fit(im) {
@@ -400,7 +422,13 @@
     im.style.backgroundImage = '';
     if (im.getAttribute('src') !== src) {
       im.style.opacity = '';
-      im.onload = () => { fit(im); if (j === panelI) setTint(j); }; im.src = src;
+      im.onload = async () => {
+        try { await im.decode(); } catch { }
+        if (im.naturalWidth > 0) decoded.add(src);
+        fit(im); if (j === panelI) setTint(j);
+      };
+      im.src = src;
+      preload(src);
     }
     fit(im);
   }
@@ -453,9 +481,26 @@
   // ----- carousel -----
   function go(k, v = 0) {
     if (N() < 2) k = 0;
+    const dir = k > 0 ? 1 : k < 0 ? -1 : 0;
+    if (dir) {
+      const src = srcAt(idx + dir);
+      if (src && !decoded.has(src)) {
+        if (animTimer) { clearTimeout(animTimer); animTimer = 0; }
+        pendingK = 0; setOffset(0, 160);
+        lb.classList.add('lb-wait');
+        const token = ++navToken;
+        preload(src).then(ok => {
+          if (token !== navToken || lb.hidden) return;
+          lb.classList.remove('lb-wait');
+          if (ok) go(dir, v);
+        });
+        return;
+      }
+    }
     if (animTimer) commit();
     const target = -k * (W + GAP), dist = Math.abs(target - offset);
     pendingK = k; setPanel(wrap(idx + k));
+    warm(idx + k);
     if (reduce || dist < 1) { setOffset(target); commit(); return; }
     const sp = Math.abs(v), ms = Math.round(Math.max(200, Math.min(460, sp > 0.25 ? dist / sp * 1.8 : 240 + dist * 0.25)));
     setOffset(target, ms); animTimer = setTimeout(commit, ms + 20);
@@ -544,6 +589,8 @@
       else if (Math.abs(dy) > 12) gest = 'none';
     } else if (gest === 'drag') {
       let x = st.off + (e.clientX - st.x); if (N() < 2) x *= 0.3;
+      const dir = x < -8 ? 1 : x > 8 ? -1 : 0;
+      if (dir && !decoded.has(srcAt(idx + dir))) { x = 0; lb.classList.add('lb-wait'); const held = srcAt(idx + dir); preload(held).then(() => lb.classList.remove('lb-wait')); }
       setOffset(x); const t = performance.now(); samples.push({ x: e.clientX, t }); while (samples.length > 2 && t - samples[0].t > 100) samples.shift();
     } else if (gest === 'pan') {
       const z = zs(im); applyZ(im, clampZ(im, { s: z.s, tx: st.tx + dx, ty: st.ty + dy }));
@@ -586,16 +633,11 @@
   lb.addEventListener('touchmove', e => { if (e.touches.length > 1 || !e.target.closest('.lb-panel')) e.preventDefault(); }, { passive: false });
   lb.addEventListener('dblclick', e => e.preventDefault());
 
-  // ----- open / close with a shared-element "flight" between the thumbnail and the viewer -----
+  // The viewer fades open in place. No shared-element flight.
   function onScreen(el) {
     if (!el) return null; const r = el.getBoundingClientRect(), sc = el.closest('.pf-scroll')?.getBoundingClientRect();
     if (sc && (r.right < sc.left + 20 || r.left > sc.right - 20)) return null;          // hidden sideways inside the portfolio band
     return r.width && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth ? r : null;
-  }
-  function fly(from, to, src, r0, r1, ms, host = lb) {
-    flyer?.remove(); const g = flyer = document.createElement('div'); g.className = 'lb-flyer'; g.innerHTML = `<img alt="" src="${esc(src)}">`; host.appendChild(g);
-    const k = (r, rad) => ({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: rad + 'px' });
-    return g.animate([k(from, r0), k(to, r1)], { duration: ms, easing: 'cubic-bezier(.2,.75,.2,1)', fill: 'forwards' }).finished.catch(() => { });
   }
   async function open(i, c) {
     if (!lb.hidden || !c?.list.length) return;
@@ -604,32 +646,17 @@
     lb.hidden = false; lockScroll(1);
     layout(); fill(0, i - 1); fill(1, i); fill(2, i + 1); setOffset(0); setPanel(i);
     $('#lbClose').focus({ preventScroll: true });
-    const thumb = tileImg(i), r0 = !reduce && onScreen(thumb), im = curImg();
     requestAnimationFrame(() => lb.classList.add('open'));
-    if (!r0) return;
-    im.style.opacity = '0'; thumb.style.visibility = 'hidden';
-    await fly(r0, im.getBoundingClientRect(), thumb.currentSrc || thumb.src, 14, 10, 420);
-    try { await im.decode(); } catch { }
-    im.style.opacity = ''; thumb.style.visibility = ''; flyer?.remove(); flyer = null;
+    warm(i);
   }
   async function close() {
     if (lb.hidden || closing) return; closing = true;
     if (animTimer) commit(); if (offset) setOffset(0);
     const im = curImg(); resetZoom(im);
-    ctx.onClose?.(idx);                       // e.g. the commission slideshow jumps to the slide that was being viewed
-    const card = ctx.grid?.querySelector(`[data-i="${idx}"]`)?.closest('.brick, .tier');
-    if (card && card.offsetParent) {
-      if (card.classList.contains('brick')) { const sc = card.closest('.pf-scroll'); const r = card.getBoundingClientRect(), R = sc.getBoundingClientRect(); if (r.left < R.left || r.right > R.right) { sc.scrollLeft = Math.max(0, card.offsetLeft - (sc.clientWidth - card.offsetWidth) / 2); pf.sync(); } }
-      if (!onScreen(card.querySelector('img'))) card.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
-    }
-    const thumb = tileImg(idx), r1 = !reduce && onScreen(thumb), r0 = im.getBoundingClientRect();
+    ctx.onClose?.(idx);
     lb.classList.remove('open');
-    if (r1 && r0.width) {
-      thumb.style.visibility = 'hidden'; im.style.opacity = '0';
-      await fly(r0, r1, im.currentSrc || im.src, 10, 14, 380);
-      thumb.style.visibility = '';
-    } else await new Promise(r => setTimeout(r, reduce ? 0 : 320));
-    lb.hidden = true; im.style.opacity = ''; flyer?.remove(); flyer = null; lockScroll(-1); closing = false;
+    await new Promise(r => setTimeout(r, reduce ? 0 : 280));
+    lb.hidden = true; im.style.opacity = ''; lockScroll(-1); closing = false;
     lastFocus?.focus?.({ preventScroll: true });
   }
   $('#lbClose').onclick = close; $('#lbPrev').onclick = () => go(-1); $('#lbNext').onclick = () => go(1);
@@ -779,6 +806,30 @@
     $('#installBg')?.addEventListener('click', closeInstall);
     addEventListener('keydown', e => { if (e.key === 'Escape' && installModal && !installModal.hidden) closeInstall(); });
   }
+  const noAiBtn = $('#noAiBtn'), noAiPop = $('#noAiPop');
+  const closeNoAi = () => {
+    if (!noAiPop || noAiPop.hidden) return;
+    noAiPop.hidden = true;
+    noAiBtn?.setAttribute('aria-expanded', 'false');
+    noAiBtn?.focus();
+  };
+  if (noAiBtn && noAiPop) {
+    noAiBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (noAiPop.hidden) { noAiPop.hidden = false; noAiBtn.setAttribute('aria-expanded', 'true'); $('#noAiClose')?.focus(); }
+      else closeNoAi();
+    });
+    $('#noAiClose')?.addEventListener('click', (e) => { e.stopPropagation(); closeNoAi(); });
+    document.addEventListener('click', (e) => {
+      if (noAiPop.hidden) return;
+      if (e.target.closest('#noAiPop') || e.target.closest('#noAiBtn')) return;
+      closeNoAi();
+    });
+    addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !noAiPop.hidden) { e.preventDefault(); e.stopPropagation(); closeNoAi(); }
+    }, true);
+  }
+
   if ('serviceWorker' in navigator && !navigator.webdriver) {
     let refreshed = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (refreshed) return; refreshed = true; location.reload(); });

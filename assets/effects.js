@@ -1,7 +1,5 @@
-/* Motion preview: centered ink intro, hero parallax, tilting cards.
-   Nothing here runs unless the page is marked data-preview. */
+/* Ink intro, hero parallax, and tilting commission cards. */
 (() => {
-  if (document.documentElement.dataset.preview !== '1') return;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const $ = (s) => document.querySelector(s);
   const clamp = (a, b, t) => Math.max(0, Math.min(1, (t - a) / (b - a)));
@@ -102,16 +100,14 @@
 
   const hero = $('#home');
   const bg = hero && hero.querySelector('.hero-bg');
-  const fig = hero && hero.querySelector('.hero-figure');
   const text = hero && hero.querySelector('.hero-text');
-  if (hero && bg && fig && text) {
+  if (hero && bg && text) {
     let px = 0, py = 0, sy = 0, raf = 0, heroH = hero.offsetHeight;
     const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
     const apply = () => {
       raf = 0;
       const y = Math.min(sy, heroH);
       bg.style.transform = 'translate3d(' + (px * -18) + 'px, ' + (y * 0.16 + py * -12) + 'px, 0)';
-      fig.style.transform = 'translate3d(' + (px * 20) + 'px, ' + (y * -0.05 + py * 12) + 'px, 0)';
       text.style.transform = 'translate3d(' + (px * 10) + 'px, ' + (y * -0.18 + py * 8) + 'px, 0)';
     };
     const schedule = () => { if (!raf) raf = requestAnimationFrame(apply); };

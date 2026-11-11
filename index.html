@@ -10,7 +10,7 @@
 <meta property="og:title" content="yazarts · portfolio">
 <meta property="og:description" content="Character art and illustrations by @yazarts. Open for commissions.">
 <meta property="og:url" content="https://yazarts.github.io/">
-<meta property="og:image" content="https://yazarts.github.io/images/site/hero-cutout.png">
+<meta property="og:image" content="https://yazarts.github.io/images/6c36bfec-d1d5-4ff5-bc75-936fc3b8a97e-1.jpeg">
 <link rel="canonical" href="https://yazarts.github.io/">
 <meta name="theme-color" content="#0c1420">
 <link rel="icon" href="assets/icons/favicon-32.png" type="image/png" sizes="32x32">
@@ -20,8 +20,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="yazarts">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -30,7 +28,6 @@
   <div class="nav-inner">
     <div class="brand-wrap">
       <a class="brand" href="#home"><img class="brand-logo" id="brandLogo" src="images/site/logo.png" alt=""><span id="brandName">yazarts</span></a>
-      <button class="music-btn" type="button" id="musicBtn" aria-pressed="false" aria-label="Play background music" title="Background music" hidden><span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="mute-line" aria-hidden="true"></span></button>
     </div>
     <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
     <nav id="menu" aria-label="Main">
@@ -47,18 +44,29 @@
     <div class="hero-bg" aria-hidden="true"><img id="heroBg" alt="" decoding="async" fetchpriority="high"></div>
     <div class="hero-shade" aria-hidden="true"></div>
     <div class="hero-inner">
-      <figure class="hero-figure"><img id="heroImg" src="images/site/hero-cutout.png" alt="" fetchpriority="high" decoding="async"></figure>
       <div class="hero-text">
         <h1 id="heroTitle">Welcome!</h1>
-        <span class="hero-lines" aria-hidden="true"><i></i><i></i><i></i></span>
         <p class="hero-intro"><span id="heroIntro">Hi there! I'm yazarts! A self-taught digital artist based in [your city].</span>
           <button class="see-more" type="button" id="bioBtn" aria-haspopup="dialog" aria-controls="bio">See more<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></p>
-        <a class="pill hero-cta" href="#portfolio">See my work<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
+        <div class="hero-actions">
+          <a class="pill hero-cta" href="#portfolio">See my work<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
+          <div class="hero-tools">
+            <button class="music-btn" type="button" id="musicBtn" aria-pressed="false" aria-label="Play background music" title="Background music" hidden><span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button>
+            <button class="music-btn noai-btn" type="button" id="noAiBtn" aria-expanded="false" aria-controls="noAiPop" aria-label="No artificial intelligence">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V7.5a1.5 1.5 0 0 1 3 0V11"/><path d="M11 10.5V6.5a1.5 1.5 0 0 1 3 0V11"/><path d="M14 10.2V8a1.5 1.5 0 0 1 3 0v5.2c0 3-2 5.3-5 5.3-2.6 0-4.2-1.4-5-3.2L5.6 13a1.4 1.4 0 0 1 2.2-1.6L8 12.2"/></svg>
+            </button>
+            <div class="noai-pop" id="noAiPop" role="dialog" aria-modal="true" aria-labelledby="noAiText" hidden>
+              <p id="noAiText">100% hand-drawn. Every piece here is drawn by hand by yazarts. No artificial intelligence is used to create or edit any of this artwork.</p>
+              <button type="button" class="noai-x" id="noAiClose" aria-label="Close">×</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="section" id="portfolio" aria-label="Portfolio">
+  <section class="section" id="portfolio" aria-labelledby="pf-h">
+    <div class="section-head fade pf-head"><h2 id="pf-h">My portfolio</h2></div>
     <div class="pf-wrap fade" id="pfWrap">
       <div class="pf-scroll" id="pfScroll" tabindex="0" role="region" aria-label="Artworks, scroll sideways to see more">
         <div class="pf-track" id="pfTrack"></div>
@@ -72,7 +80,7 @@
   </section>
 
   <section class="section comm" id="commissions" aria-labelledby="comm-h">
-    <div class="section-head fade"><h2 id="comm-h">Commissions</h2><span class="rule"></span></div>
+    <div class="section-head fade"><h2 id="comm-h">Commissions</h2></div>
     <div class="comm-top fade">
       <p class="comm-kicker" id="commKicker">Available for commissions</p>
       <p class="comm-text" id="commText"></p>
@@ -143,6 +151,7 @@
 <audio id="bgAudio" loop preload="none"></audio>
 
 <noscript><p style="text-align:center;padding:2rem">Please enable JavaScript to view the portfolio.</p></noscript>
+<script src="assets/effects.js" defer></script>
 <script src="assets/site.js" defer></script>
 </body>
 </html>

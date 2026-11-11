@@ -61,13 +61,13 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
     // ---- welcome
     const hero = await p.evaluate(() => {
       const i = document.querySelector('#heroImg'), t = document.querySelector('.hero-text'), bg = document.querySelector('#heroBg'), H = document.querySelector('#home');
-      const r = i.getBoundingClientRect(), tr = t.getBoundingClientRect(), hr = H.getBoundingClientRect(), br = bg.getBoundingClientRect();
-      return { png: i.complete && /\.png/.test(i.currentSrc), imgL: r.left, imgR: r.right, imgB: r.bottom, txtL: tr.left, txtR: tr.right, txtT: tr.top, W: innerWidth,
+      const r = i ? i.getBoundingClientRect() : { left: 0, right: 0, bottom: 0 }, tr = t.getBoundingClientRect(), hr = H.getBoundingClientRect(), br = bg.getBoundingClientRect();
+      return { png: false, imgL: r.left, imgR: r.right, imgB: r.bottom, txtL: tr.left, txtR: tr.right, txtT: tr.top, W: innerWidth,
         bgOk: bg.complete && bg.naturalWidth > 0 && H.classList.contains('bg-ok'), bgSrc: bg.currentSrc, cover: br.width >= hr.width - 1 && br.height >= hr.height - 1 && getComputedStyle(bg).objectFit === 'cover',
         heroBg: getComputedStyle(H).backgroundImage, text: t.innerText, nav: [...document.querySelectorAll('#menu a')].map(a => a.textContent).join('|') };
     });
-    ok(hero.png, L + 'floating cut-out PNG loaded');
-    ok(mob && w < 720 ? hero.imgB <= hero.txtT + 5 : hero.imgR <= hero.txtL + 5 && hero.imgL < hero.W * 0.25 && hero.txtR > hero.W * 0.8, L + (mob && w < 720 ? 'phone: image stacked above the text' : `image on the LEFT (${Math.round(hero.imgL)}-${Math.round(hero.imgR)}), text on the RIGHT (${Math.round(hero.txtL)}-${Math.round(hero.txtR)})`));
+    ok(!(await p.$('#heroImg')), L + 'floating character is gone');
+    ok(hero.txtR > hero.W * 0.55, L + 'welcome text sits on the right or center (' + Math.round(hero.txtR) + ')');
     ok(hero.bgOk && hero.cover, L + 'background illustration covers the whole hero (' + hero.bgSrc.split('/').slice(-2).join('/') + ')');
     ok(!/#8a5a3b|138, 90, 59|108, 68, 45/.test(hero.heroBg), L + 'old brown/orange gradient is gone');
     ok(!/Digital art and illustrations/i.test(hero.text) && !/To my portfolio/i.test(hero.text), L + 'removed "Digital art and illustrations by…" and "To my portfolio"');
@@ -283,8 +283,8 @@ const smooth = (p) => p.evaluate(() => new Promise(res => {
   // sub-path
   { const { c, p, errs } = await ctx(b, 1280, 800, false);
     await p.goto(SUB, { waitUntil: 'load' }); await p.waitForTimeout(2500); await go(p, '#commissions'); await p.waitForTimeout(800);
-    const r = await p.evaluate(() => ({ hero: document.querySelector('#heroImg').naturalWidth, bg: document.querySelector('#heroBg').naturalWidth, bricks: [...document.querySelectorAll('.brick img')].filter(i => i.complete && i.naturalWidth).length, tier: [...document.querySelectorAll('.tier img')].filter(i => i.naturalWidth).length }));
-    ok(r.hero > 0 && r.bg > 0 && r.bricks >= 6 && r.tier >= 4 && !errs.length, `[sub-path ${SUB}] hero, background, ${r.bricks} tiles, tier images load` + (errs.length ? ' errors: ' + errs.join(' || ') : ''));
+    const r = await p.evaluate(() => ({ bg: document.querySelector('#heroBg').naturalWidth, bricks: [...document.querySelectorAll('.brick img')].filter(i => i.complete && i.naturalWidth).length, tier: [...document.querySelectorAll('.tier img')].filter(i => i.naturalWidth).length }));
+    ok(r.bg > 0 && r.bricks >= 6 && r.tier >= 4 && !errs.length, `[sub-path ${SUB}] background, ${r.bricks} tiles, tier images load` + (errs.length ? ' errors: ' + errs.join(' || ') : ''));
     await c.close(); }
   // empty tier, legacy single image, duplicate path, and a price that must not render
   { const { c, p, errs } = await ctx(b, 1280, 800, false);

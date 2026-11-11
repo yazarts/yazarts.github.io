@@ -1,5 +1,5 @@
 /* yazarts service worker. Bump VERSION to drop the previous caches on the next visit. */
-const VERSION = '2';
+const VERSION = '3';
 const SHELL = 'yazarts-shell-' + VERSION;
 const CONTENT = 'yazarts-content-' + VERSION;
 const KEEP = new Set([SHELL, CONTENT]);
@@ -10,6 +10,8 @@ const SHELL_URLS = [
   './manifest.webmanifest',
   './assets/style.css',
   './assets/site.js',
+  './assets/effects.js',
+  './assets/fonts/nanum-brush-script.woff2',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
   './assets/icons/icon-maskable-192.png',
