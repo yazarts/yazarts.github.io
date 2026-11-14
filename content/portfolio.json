@@ -29,7 +29,35 @@
       "featured": false
     },
     {
-      "image": "/images/artworks/placeholder-6.svg",
+      "image": "/images/artworks/img1639.jpeg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/img1637.jpeg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/img1696.jpeg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/img1636.jpeg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/img1597.jpeg",
+      "featured": true
+    },
+    {
+      "image": "/images/artworks/img1398.jpeg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/img1632.jpeg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/img1478.jpeg",
       "featured": false
     }
   ]
