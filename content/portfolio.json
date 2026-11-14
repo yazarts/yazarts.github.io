@@ -27,6 +27,10 @@
     {
       "image": "/images/artworks/placeholder-6.svg",
       "featured": false
+    },
+    {
+      "image": "/images/img1687.jpeg",
+      "featured": true
     }
   ]
 }
