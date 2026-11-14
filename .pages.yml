@@ -57,6 +57,10 @@ content:
         label: No AI note
         description: Shown when someone taps the No AI button in the welcome section. Leave empty to use the standard hand-drawn note.
         type: text
+      - name: watermark
+        label: Viewer watermark
+        description: A faint yazarts mark over the full-screen artwork. On by default. The image files themselves are not changed.
+        type: boolean
 
   - name: portfolio
     label: Portfolio

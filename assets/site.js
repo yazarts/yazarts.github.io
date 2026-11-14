@@ -117,6 +117,20 @@
     if (root.scrollLeft || window.scrollX) window.scrollTo(0, root.scrollTop || window.scrollY || 0);
   }
   const pinLater = () => { pinX(); requestAnimationFrame(pinX); [50, 150, 400, 800].forEach(ms => setTimeout(pinX, ms)); };
+  // Artwork is harder to save: no context menu, no drag, no iOS long-press sheet. Taps and pinches still go through.
+  const artTarget = (el) => el && el.closest && el.closest('.tile, .stack, .lb-frame, .lb-tiles, .lightbox');
+  addEventListener('contextmenu', (e) => { if (artTarget(e.target)) e.preventDefault(); }, true);
+  addEventListener('dragstart', (e) => { if (artTarget(e.target)) e.preventDefault(); }, true);
+  function shieldArt(root) {
+    (root || document).querySelectorAll('.tile img, .stack img, .lb-frame img, .lb-tiles img').forEach(el => {
+      el.draggable = false;
+      el.setAttribute('draggable', 'false');
+      el.style.webkitTouchCallout = 'none';
+      el.style.webkitUserDrag = 'none';
+      el.style.webkitUserSelect = 'none';
+      el.style.userSelect = 'none';
+    });
+  }
   addEventListener('orientationchange', pinLater);
   addEventListener('resize', pinLater);
   if (window.visualViewport) visualViewport.addEventListener('resize', pinX);
@@ -129,6 +143,7 @@
     if (w.heroIntro != null) $('#heroIntro').textContent = w.heroIntro;
     const noAi = $('#noAiText');
     if (noAi) noAi.textContent = String(w.noAiText ?? '').trim() || NO_AI_DEFAULT;
+    $('#lb')?.classList.toggle('no-mark', w.watermark === false);
     // full-cover background illustration; without one the calm navy background shows
     const bg = w.heroBackground;
     if (bg) {
@@ -308,6 +323,7 @@
         };
         im.complete && im.naturalWidth ? ok() : im.addEventListener('load', ok, { once: true }); im.addEventListener('error', () => im.classList.add('ok'), { once: true });
       });
+      shieldArt(track);
       pack();
     }
     let packT = 0; const schedule = () => { cancelAnimationFrame(packT); packT = requestAnimationFrame(pack); };
@@ -492,6 +508,7 @@
       preload(shown);
     }
     fit(im);
+    shieldArt(s);
   }
   function place() {
     const w = W || stage.clientWidth || innerWidth;
@@ -659,7 +676,10 @@
         let node = layer.querySelector('[data-k="' + key + '"]');
         if (!node) {
           node = document.createElement('img');
-          node.dataset.k = key; node.alt = ''; node.draggable = false; node.decoding = 'async';
+          node.dataset.k = key; node.alt = '';           node.draggable = false; node.decoding = 'async';
+          node.style.webkitTouchCallout = 'none';
+          node.style.webkitUserDrag = 'none';
+          node.style.userSelect = 'none';
           node.src = asset(info.tiles) + '/' + level + '/' + c + '_' + r + '.' + (info.format || 'jpg');
           layer.appendChild(node);
         }
@@ -870,6 +890,7 @@
         };
         im.complete && im.naturalWidth ? apply() : im.addEventListener('load', apply, { once: true });
       });
+      shieldArt(stage);
       dots.innerHTML = list.length > 1 ? list.map((t, k) => `<button type="button" class="t-dot" data-k="${k}" aria-label="Show ${esc(t.name || 'tier ' + (k + 1))}"><i></i></button>`).join('') : '';
       $('#tiersCtrl').hidden = list.length < 2;
       cur = 0; show(0, 0, true);
