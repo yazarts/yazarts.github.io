@@ -59,6 +59,34 @@
     {
       "image": "/images/artworks/img1478.jpeg",
       "featured": false
+    },
+    {
+      "image": "/images/artworks/untitled30.jpg",
+      "featured": true
+    },
+    {
+      "image": "/images/artworks/untitled27.jpg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/untitled55.jpg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/untitled79.jpg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/untitled70.jpg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/untitled131.jpg",
+      "featured": false
+    },
+    {
+      "image": "/images/artworks/untitled125.jpg",
+      "featured": false
     }
   ]
 }
