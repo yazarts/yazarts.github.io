@@ -30,8 +30,10 @@
     <div class="brand-wrap">
       <a class="brand" href="#home"><img class="brand-logo" id="brandLogo" src="images/site/logo.png" alt=""><span id="brandName">yazarts</span></a>
     </div>
+    <div class="nav-social" id="navSocial" hidden></div>
     <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
     <nav id="menu" aria-label="Main">
+      <div class="menu-social" id="menuSocial" hidden></div>
       <a href="#home" data-nav="home">Home</a>
       <a href="#portfolio" data-nav="portfolio">Portfolio</a>
       <a href="#commissions" data-nav="commissions">Commissions</a>
@@ -73,7 +75,7 @@
 
   <section class="section" id="portfolio" aria-labelledby="pf-h">
     <div class="section-head fade pf-head"><h2 id="pf-h">My portfolio</h2></div>
-    <div class="pf-wrap fade" id="pfWrap">
+    <div class="pf-wrap fade pf-masonry" id="pfWrap">
       <div class="pf-scroll" id="pfScroll" tabindex="0" role="region" aria-label="Artworks, scroll sideways to see more">
         <div class="pf-track" id="pfTrack"></div>
       </div>

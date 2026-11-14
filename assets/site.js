@@ -10,7 +10,7 @@
     get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } },
   };
-  let art = [], tiers = [], thumbs = {}, sizes = {};
+  let art = [], tiers = [], thumbs = {}, sizes = {}, dziMap = {};
   // grid previews + image sizes are generated at deploy time (content/thumbs.json); the viewer always loads the untouched original
   const clean = (p) => relPath(p).split(/[?#]/)[0];
   const thumb = (p) => { const t = thumbs[clean(p)]; return asset(t || p); };
@@ -69,6 +69,15 @@
   document.querySelectorAll('#menu a').forEach(a => a.addEventListener('click', () => { nav.classList.remove('menu-open'); $('#menuBtn').setAttribute('aria-expanded', false); }));
   const secIO = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) document.querySelectorAll('#menu a').forEach(a => a.classList.toggle('active', a.dataset.nav === e.target.id)); }), { rootMargin: '-45% 0px -50% 0px' });
   ['home', 'portfolio', 'commissions', 'contact'].forEach(id => secIO.observe(document.getElementById(id)));
+  function fitNav() {
+    const inner = document.querySelector('.nav-inner');
+    if (!inner || matchMedia('(max-width: 720px)').matches) { nav.classList.remove('nav-compact', 'icons-in-menu'); return; }
+    nav.classList.remove('nav-compact', 'icons-in-menu');
+    if (inner.scrollWidth > inner.clientWidth + 1) nav.classList.add('nav-compact');
+    if (inner.scrollWidth > inner.clientWidth + 1) nav.classList.add('icons-in-menu');
+  }
+  addEventListener('resize', fitNav);
+  document.fonts?.ready?.then(() => fitNav());
 
   // gentle fade-in on scroll
   const io = !reduce && 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -6% 0px', threshold: .05 }) : null;
@@ -101,13 +110,16 @@
     }
     if (was && !locks) { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }
   }
-  // The wide portfolio track can leave the visual viewport scrolled sideways after an iPad rotation.
+  // iPad Safari can leave the visual viewport scrolled sideways after a rotation when any
+  // element was wider than the screen (the old horizontal portfolio track did this).
   function pinX() {
-    if (document.documentElement.scrollLeft) document.documentElement.scrollLeft = 0;
-    if (document.body.scrollLeft) document.body.scrollLeft = 0;
+    const root = document.scrollingElement || document.documentElement;
+    if (root.scrollLeft || window.scrollX) window.scrollTo(0, root.scrollTop || window.scrollY || 0);
   }
-  addEventListener('orientationchange', () => { pinX(); requestAnimationFrame(pinX); setTimeout(pinX, 350); });
-  addEventListener('resize', pinX);
+  const pinLater = () => { pinX(); requestAnimationFrame(pinX); [50, 150, 400, 800].forEach(ms => setTimeout(pinX, ms)); };
+  addEventListener('orientationchange', pinLater);
+  addEventListener('resize', pinLater);
+  if (window.visualViewport) visualViewport.addEventListener('resize', pinX);
 
   // ---------- welcome section ----------
   const hero = $('#home'), heroBg = $('#heroBg');
@@ -176,10 +188,25 @@
     email: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 7l8 6 8-6"/></svg>',
     link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>',
   };
+  const OUT = {
+    instagram: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="3.4"/><circle cx="17.2" cy="6.8" r=".9" fill="currentColor" stroke="none"/></svg>',
+    tiktok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 7.2c1.2 1.4 2.6 2.2 4.2 2.4"/><path d="M14 7.2V15a3.6 3.6 0 1 1-3.6-3.6"/></svg>',
+    reddit: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.2" r="6"/><circle cx="9.4" cy="12.6" r=".7" fill="currentColor" stroke="none"/><circle cx="14.6" cy="12.6" r=".7" fill="currentColor" stroke="none"/><path d="M9.6 15.5c.8.7 1.6.9 2.4.9s1.6-.2 2.4-.9"/><circle cx="17.4" cy="7" r="1.1"/><path d="M16.6 8 14.2 7.4"/></svg>',
+    kofi: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9h9.5v5.2A3.3 3.3 0 0 1 12.2 17h-1.6A3.3 3.3 0 0 1 7.3 13.7V9"/><path d="M15.5 10h1.3a2 2 0 0 1 0 4H15.5"/><path d="M11 14.6s-1.5-.9-1.5-1.8a.9.9 0 0 1 1.6-.4.9.9 0 0 1 1.6.4c0 .9-1.7 1.8-1.7 1.8z"/></svg>',
+    youtube: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="11" rx="3"/><path d="M11 10.2v4.2l4.2-2.1z" fill="currentColor" stroke="none"/></svg>',
+    x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  };
   const iconFor = (label, url) => {
     const s = (label + ' ' + url).toLowerCase().replace(/[^a-z]/g, '');
     if (s.includes('instagram')) return ICON.instagram; if (s.includes('reddit')) return ICON.reddit; if (s.includes('kofi')) return ICON.kofi;
     if (s.includes('tiktok')) return ICON.tiktok; if (s.includes('youtube')) return ICON.youtube; if (/twitter|xcom/.test(s) || label.trim().toLowerCase() === 'x') return ICON.x;
+    return ICON.link;
+  };
+  const outlineFor = (label, url) => {
+    const s = (label + ' ' + url).toLowerCase().replace(/[^a-z]/g, '');
+    if (s.includes('instagram')) return OUT.instagram; if (s.includes('reddit')) return OUT.reddit; if (s.includes('kofi')) return OUT.kofi;
+    if (s.includes('tiktok')) return OUT.tiktok; if (s.includes('youtube')) return OUT.youtube; if (/twitter|xcom/.test(s) || String(label).trim().toLowerCase() === 'x') return OUT.x;
+    if (s.includes('mail')) return ICON.email;
     return ICON.link;
   };
   const handle = (url) => { try { const u = new URL(url); const p = u.pathname.split('/').filter(Boolean).pop(); return p ? (p.startsWith('@') ? p : '@' + p) : u.hostname.replace(/^www\./, ''); } catch { return ''; } };
@@ -197,6 +224,12 @@
       const mail = addr ? `<li class="mail"><a href="${esc(mailtoHref(addr))}" aria-label="${esc('Email ' + addr)}" title="Email"><span class="ico">${ICON.email}</span><span class="s-name">Email</span></a></li>` : '';
       $('#socials').innerHTML = social.map(l => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener me" aria-label="${esc((l.label || handle(l.url)) + ' ' + handle(l.url))}" title="${esc(l.label || '')}">
         <span class="ico">${iconFor(l.label || '', l.url)}</span><span class="s-name">${esc(l.label || handle(l.url))}</span></a></li>`).join('') + mail;
+      const bar = social.map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(l.label || handle(l.url))}">${outlineFor(l.label || '', l.url)}</a>`).join('')
+        + (addr ? `<a href="${esc(mailtoHref(addr))}" aria-label="${esc('Email ' + addr)}">${ICON.email}</a>` : '');
+      const navS = $('#navSocial'), menuS = $('#menuSocial');
+      if (navS) { navS.innerHTML = bar; navS.hidden = !bar; }
+      if (menuS) { menuS.innerHTML = bar; menuS.hidden = !bar; }
+      fitNav();
     }
     function toggle(force) {
       const o = force ?? !wrapEl.classList.contains('open');
@@ -210,58 +243,70 @@
     return { set, toggle };
   })();
 
-  // ---------- portfolio: a horizontal band of "bricks" in two rows ----------
-  // Every tile gets a shape from a repeating mix of wide, square and tall ratios (the picture is cropped to it with
-  // object-fit: cover; the image FILE is never changed and the viewer always shows the full, uncropped original).
-  // Tiles go into whichever row is shorter, so the seams are staggered like brickwork. The first piece, and any piece
-  // marked "Show bigger" in the CMS, is a big tile as tall as both rows. Layout is computed once (and on resize):
-  // nothing moves while the band is being swiped.
-  const RATIOS = [1.5, 0.8, 1, 1.3, 0.7, 1.15, 1.6, 0.85, 1.05, 0.75];
-  const BIG_RATIO = 0.8;
+  // ---------- portfolio: masonry of the real aspect ratios (nothing is cropped) ----------
+  // Column count follows the screen. A piece marked "Show bigger" spans two columns. Sizes from
+  // content/thumbs.json reserve the box before the file arrives, so the grid does not jump.
   const pf = (() => {
     const scroller = $('#pfScroll'), track = $('#pfTrack'), wrapEl = $('#pfWrap'), hint = $('#pfHint');
-    let lastH = 0, lastW = 0;
-    const big = (i) => art[i].featured === true || (i === 0 && innerWidth >= 720);   // phones: the first piece stays in the rows so the brick pattern shows
-    const html = (a, i) => `<div class="brick" data-i="${i}" style="--d:${Math.min(i, 8) * 0.03}s"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
-        <img src="${esc(thumb(a.image))}" alt="Artwork ${i + 1} by @yazarts" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" draggable="false"></button></div>`;
+    let lastW = 0;
+    const aspectOf = (i) => {
+      const z = sizeOf(art[i].image);
+      if (z && z[0] && z[1]) return z[0] / z[1];
+      const im = track.querySelector(`.brick[data-i="${i}"] img`);
+      if (im && im.naturalWidth && im.naturalHeight) return im.naturalWidth / im.naturalHeight;
+      return 1;
+    };
+    const html = (a, i) => {
+      const z = sizeOf(a.image);
+      const known = z && z[0] && z[1];
+      const ar = known ? (z[0] / z[1]) : 1;
+      const dim = known ? ` width="${z[0]}" height="${z[1]}"` : '';
+      return `<div class="brick" data-i="${i}" data-known="${known ? 1 : 0}" style="--d:${Math.min(i, 8) * 0.03}s;--ar:${ar}"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
+        <img src="${esc(thumb(a.image))}" alt="Artwork ${i + 1} by @yazarts"${dim} style="aspect-ratio:${ar}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" draggable="false"></button></div>`;
+    };
     function pack() {
-      const H = track.clientHeight; if (!H || !art.length) return;
-      const gap = innerWidth < 720 ? 8 : 12, h = (H - gap) / 2, lanes = [0, 0], rects = [], laneTiles = [[], []];
-      let n = 0;
-      // stretch the shorter row's tiles (since the last big tile) a little so both rows end flush: no holes, even gaps
-      const even = (maxGrow) => {
-        const s = lanes[0] < lanes[1] ? 0 : 1, d = Math.abs(lanes[0] - lanes[1]), ts = laneTiles[s];
-        if (d < 0.5 || !ts.length) return;
-        const total = ts.reduce((a, t) => a + rects[t].w, 0); if (d / total > maxGrow) return;
-        let x = rects[ts[0]].x; ts.forEach(t => { rects[t].w += d * rects[t].w / total; rects[t].x = x; x += rects[t].w + gap; }); lanes[s] = lanes[1 - s];
-      };
-      const used = new Set();
-      const putSmall = (i) => {
-        const w = h * RATIOS[n++ % RATIOS.length], l = lanes[0] <= lanes[1] ? 0 : 1;
-        rects[i] = { x: lanes[l], y: l * (h + gap), w, h }; laneTiles[l].push(i); lanes[l] += w + gap; used.add(i);
-      };
+      if (!art.length) return;
+      const gap = innerWidth < 720 ? 10 : 14;
+      const cols = innerWidth < 800 ? 2 : 3;
+      const W = scroller.clientWidth - (parseFloat(getComputedStyle(scroller).paddingLeft) + parseFloat(getComputedStyle(scroller).paddingRight));
+      const colW = (W - gap * (cols - 1)) / cols;
+      const heights = Array(cols).fill(0);
+      const rects = [];
       art.forEach((a, i) => {
-        if (used.has(i)) return;
-        if (!big(i)) return putSmall(i);
-        // before a big tile, pull the next small pieces forward while the rows are clearly uneven, then stretch to flush
-        for (let j = i + 1; j < art.length && Math.abs(lanes[0] - lanes[1]) > h * 0.45; j++) if (!big(j) && !used.has(j)) putSmall(j);
-        even(1.2);
-        const x = Math.max(lanes[0], lanes[1]), w = H * BIG_RATIO;
-        rects[i] = { x, y: 0, w, h: H }; lanes[0] = lanes[1] = x + w + gap; laneTiles[0] = []; laneTiles[1] = []; used.add(i);
+        const ar = Math.max(0.2, aspectOf(i));
+        let span = a.featured === true && cols > 1 ? 2 : 1;
+        let best = 0, bestH = Infinity;
+        for (let c = 0; c <= cols - span; c++) {
+          const h = Math.max(...heights.slice(c, c + span));
+          if (h < bestH) { bestH = h; best = c; }
+        }
+        const w = colW * span + gap * (span - 1);
+        const h = w / ar;
+        rects[i] = { x: best * (colW + gap), y: bestH, w, h };
+        for (let c = best; c < best + span; c++) heights[c] = bestH + h + gap;
       });
-      even(0.45);
-      track.style.width = Math.max(lanes[0], lanes[1]) - gap + 'px';
-      track.querySelectorAll('.brick').forEach(b => { const r = rects[+b.dataset.i]; if (!r) return;
-        b.style.cssText += `;left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px`;
-        b.classList.toggle('big', r.h === H); });
-      lastH = H; lastW = innerWidth; sync();
+      track.style.width = '100%';
+      track.style.height = Math.max(0, Math.max(...heights) - gap) + 'px';
+      track.querySelectorAll('.brick').forEach(b => {
+        const r = rects[+b.dataset.i]; if (!r) return;
+        b.style.left = r.x + 'px'; b.style.top = r.y + 'px'; b.style.width = r.w + 'px'; b.style.height = r.h + 'px';
+      });
+      lastW = innerWidth; sync();
     }
     function render() {
       track.innerHTML = art.map(html).join('');
       $('#empty').hidden = art.length > 0; wrapEl.hidden = !art.length;
       track.querySelectorAll('.tile img').forEach(im => {
-        const ok = () => im.classList.add('ok');
-        im.complete && im.naturalWidth ? ok() : im.addEventListener('load', ok, { once: true }); im.addEventListener('error', ok, { once: true });
+        const ok = () => {
+          im.classList.add('ok');
+          const brick = im.closest('.brick');
+          if (brick && brick.dataset.known !== '1' && im.naturalWidth) {
+            brick.dataset.known = '1';
+            brick.style.setProperty('--ar', String(im.naturalWidth / im.naturalHeight));
+            schedule();
+          }
+        };
+        im.complete && im.naturalWidth ? ok() : im.addEventListener('load', ok, { once: true }); im.addEventListener('error', () => im.classList.add('ok'), { once: true });
       });
       pack();
     }
@@ -382,12 +427,16 @@
   const L = () => ctx.list;
   const N = () => L().length, wrap = (i) => ((i % N()) + N()) % N();
   const tileImg = (i) => ctx.grid?.querySelector(`[data-i="${i}"] img`);
-  const slides = [0, 1, 2].map(() => { const s = document.createElement('div'); s.className = 'lb-slide'; s.innerHTML = '<img alt="" draggable="false">'; track.appendChild(s); return s; });
-  const curImg = () => slides[1].firstElementChild;   // slides = [previous, current, next]
+  const slides = [0, 1, 2].map(() => { const s = document.createElement('div'); s.className = 'lb-slide'; s.innerHTML = '<div class="lb-frame"><img alt="" draggable="false"><div class="lb-tiles" hidden></div></div>'; track.appendChild(s); return s; });
+  const slideImg = (s) => s.querySelector('img');
+  const curImg = () => slideImg(slides[1]);   // slides = [previous, current, next]
+  const dziOf = (p) => { const k = clean(p); return (k && dziMap[k]) || null; };
+  // The screen-sized preview counts as loaded for swiping. Without tiles, the original file is the preview.
+  const viewSrc = (p) => { const d = dziOf(p); return d && d.preview ? asset(d.preview) : asset(p); };
   // Full-resolution originals. A slide is only swapped in after its file has decoded, so WebKit never paints a half-loaded frame.
   const decoded = new Set(), loading = new Map();
   let navToken = 0;
-  const srcAt = (i) => { const a = L()[wrap(i)]; return a && a.image ? asset(a.image) : ''; };
+  const srcAt = (i) => { const a = L()[wrap(i)]; return a && a.image ? viewSrc(a.image) : ''; };
   function preload(src) {
     if (!src || decoded.has(src)) return Promise.resolve(!!src && decoded.has(src));
     if (loading.has(src)) return loading.get(src);
@@ -409,26 +458,38 @@
   const warm = (i) => { preload(srcAt(i)); preload(srcAt(i - 1)); preload(srcAt(i + 1)); };
 
   // size each image to "contain" inside its slide (explicit size so small images still fill the space and zoom maths stay exact)
+  function maxS(im) {
+    const b = im._b, iw = +im.dataset.iw || im.naturalWidth || 0, ih = +im.dataset.ih || im.naturalHeight || 0;
+    if (!b?.w || !iw) return 4;
+    return Math.max(1, iw / b.w, ih / b.h);
+  }
   function fit(im) {
-    const s = im.parentElement, cs = getComputedStyle(s);
+    const s = im.closest('.lb-slide'), cs = getComputedStyle(s);
     const bw = s.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), bh = s.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-    const a = im.naturalWidth ? im.naturalWidth / im.naturalHeight : (L()[+s.dataset.i]?.aspect || 0.75);
+    const iw = +im.dataset.iw || im.naturalWidth, ih = +im.dataset.ih || im.naturalHeight;
+    const a = iw && ih ? iw / ih : 0.75;
     let w = bw, h = w / a; if (h > bh) { h = bh; w = h * a; }
     im._b = { w: Math.max(0, w), h: Math.max(0, h) }; applyZ(im, zs(im));
   }
   function fill(slot, i) {
-    const s = slides[slot], im = s.firstElementChild, j = wrap(i), a = L()[j], src = asset(a.image);   // always the untouched original file
+    const s = slides[slot], im = slideImg(s), j = wrap(i), a = L()[j];
+    const full = asset(a.image), shown = viewSrc(a.image), info = dziOf(a.image);
     s.dataset.i = j; s.setAttribute('aria-hidden', slot !== 1); im.alt = slot === 1 ? `Artwork ${j + 1} of ${N()} by @yazarts` : '';
+    im.dataset.full = full; im.dataset.iw = info ? info.w : ''; im.dataset.ih = info ? info.h : '';
+    im._dzi = info || null;
     im.style.backgroundImage = '';
-    if (im.getAttribute('src') !== src) {
+    if (im.getAttribute('src') !== shown) {
       im.style.opacity = '';
+      const tiles = s.querySelector('.lb-tiles'); if (tiles) { tiles.hidden = true; tiles.innerHTML = ''; }
       im.onload = async () => {
         try { await im.decode(); } catch { }
-        if (im.naturalWidth > 0) decoded.add(src);
+        if (im.naturalWidth > 0) decoded.add(shown);
+        if (!info) { im.dataset.iw = im.naturalWidth; im.dataset.ih = im.naturalHeight; }
         fit(im); if (j === panelI) setTint(j);
       };
-      im.src = src;
-      preload(src);
+      im.onerror = () => { if (im.getAttribute('src') !== full) { im._dzi = null; im.src = full; } };
+      im.src = shown;
+      preload(shown);
     }
     fit(im);
   }
@@ -438,11 +499,11 @@
       const off = N() < 2 && k !== 1;
       s.classList.toggle('off', off); s.hidden = off;
       s.style.transform = `translate3d(${(k - 1) * (w + GAP)}px,0,0)`;
-      if (off) { const im = s.firstElementChild; im.removeAttribute('src'); im.style.backgroundImage = ''; }
+      if (off) { const im = slideImg(s); im.removeAttribute('src'); im.style.backgroundImage = ''; const tiles = s.querySelector('.lb-tiles'); if (tiles) { tiles.hidden = true; tiles.innerHTML = ''; } }
     });
   }
   function setOffset(x, ms = 0) { offset = x; track.style.transition = ms ? `transform ${ms}ms ${EASE}` : 'none'; track.style.transform = `translate3d(${x}px,0,0)`; }
-  function layout() { W = stage.clientWidth || innerWidth; place(); slides.forEach(s => { if (!s.classList.contains('off')) fit(s.firstElementChild); }); lb.classList.toggle('one', N() < 2); }
+  function layout() { W = stage.clientWidth || innerWidth; place(); slides.forEach(s => { if (!s.classList.contains('off')) fit(slideImg(s)); }); lb.classList.toggle('one', N() < 2); }
 
   // ----- ambient tint: average colour of the artwork (weighted towards saturated pixels), always kept dark -----
   const tints = new Map();
@@ -465,7 +526,8 @@
   }
   function setTint(i) {
     const a = L()[i]; if (!a) return; const src = asset(a.image);
-    const t = ctx.tint || colourOf(src, tileImg(i)) || colourOf(src, slides.find(s => +s.dataset.i === i)?.firstElementChild);
+    const host = slides.find(s => +s.dataset.i === i);
+    const t = ctx.tint || colourOf(src, tileImg(i)) || (host ? colourOf(src, slideImg(host)) : null);
     const s = t ? Math.round(t.s * 100) : 0;
     tintEl.style.backgroundColor = t ? `hsl(${t.h} ${s}% 13% / .86)` : 'rgba(12,20,32,.7)';    // lightness clamped to 13%: dark, art stays the focus
     lb.dataset.tint = t ? `${t.h},${s}` : '';
@@ -531,6 +593,14 @@
   function applyZ(im, z, ms = 0, live = false) {
     const prev = Z.get(im); Z.set(im, z); clearTimeout(im._hiT);
     const b = im._b || { w: im.clientWidth, h: im.clientHeight };
+    if (im._dzi) {
+      im.classList.remove('hi');
+      im.style.transition = ms && !reduce ? `transform ${ms}ms ${EASE}` : 'none';
+      lowForm(im, z);
+      if (im === curImg()) lb.classList.toggle('zoomed', z.s > 1.01);
+      updateTiles(im, z);
+      return;
+    }
     if (z.s > 1.01 && !ms && !live) {
       im.style.transition = 'none'; im.classList.add('hi');
       im.style.width = b.w * z.s + 'px'; im.style.height = b.h * z.s + 'px';
@@ -542,20 +612,82 @@
       if (z.s > 1.01) im._hiT = setTimeout(() => { if (Z.get(im) === z && gest !== 'pinch') applyZ(im, z); }, (ms && !reduce ? ms : 0) + 140);
     }
     if (im === curImg()) lb.classList.toggle('zoomed', z.s > 1.01);
+    if (im._dzi) updateTiles(im, z);
+  }
+  // Deep Zoom: once the visitor zooms, only the tiles covering the visible area are fetched.
+  // They sit in the same box as the screen-sized preview and share its transform, so pinch,
+  // wheel and double-tap keep working. The top level is the original pixel size.
+  function updateTiles(im, z) {
+    const layer = im.parentElement && im.parentElement.querySelector('.lb-tiles');
+    if (!layer) return;
+    const info = im._dzi;
+    if (!info || !info.tiles || z.s <= 1.04) { layer.hidden = true; return; }
+    const b = im._b; if (!b?.w) return;
+    layer.hidden = false;
+    layer.style.width = b.w + 'px';
+    layer.style.height = b.h + 'px';
+    layer.style.transform = im.style.transform;
+    layer.style.transition = im.style.transition;
+    layer.style.transformOrigin = '0 0';
+    const iw = info.w, ih = info.h;
+    const maxL = Math.ceil(Math.log2(Math.max(iw, ih)));
+    const need = b.w * z.s;
+    let level = maxL;
+    for (let L = 0; L <= maxL; L++) {
+      if (Math.ceil(iw * Math.pow(2, L - maxL)) >= need - 1) { level = L; break; }
+    }
+    const sc = Math.pow(2, level - maxL);
+    const lw = Math.max(1, Math.ceil(iw * sc)), lh = Math.max(1, Math.ceil(ih * sc));
+    const ts = info.tile || 254, ov = info.overlap || 0;
+    const cols = Math.ceil(lw / ts), rows = Math.ceil(lh / ts);
+    // Use the target zoom, not the mid-animation rectangle, so a double-tap does not fetch every tile.
+    const frame = im.parentElement.getBoundingClientRect(), stageR = stage.getBoundingClientRect();
+    const imgR = { left: frame.left + z.tx, top: frame.top + z.ty, width: b.w * z.s, height: b.h * z.s };
+    imgR.right = imgR.left + imgR.width; imgR.bottom = imgR.top + imgR.height;
+    const toX = (px) => imgR.width ? ((px - imgR.left) / imgR.width) * lw : 0;
+    const toY = (py) => imgR.height ? ((py - imgR.top) / imgR.height) * lh : 0;
+    const x0 = Math.max(0, toX(Math.max(stageR.left, imgR.left)) - ts);
+    const y0 = Math.max(0, toY(Math.max(stageR.top, imgR.top)) - ts);
+    const x1 = Math.min(lw, toX(Math.min(stageR.right, imgR.right)) + ts);
+    const y1 = Math.min(lh, toY(Math.min(stageR.bottom, imgR.bottom)) + ts);
+    const want = new Set();
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if ((c + 1) * ts < x0 || (r + 1) * ts < y0 || c * ts > x1 || r * ts > y1) continue;
+        const key = level + '/' + c + '_' + r;
+        want.add(key);
+        let node = layer.querySelector('[data-k="' + key + '"]');
+        if (!node) {
+          node = document.createElement('img');
+          node.dataset.k = key; node.alt = ''; node.draggable = false; node.decoding = 'async';
+          node.src = asset(info.tiles) + '/' + level + '/' + c + '_' + r + '.' + (info.format || 'jpg');
+          layer.appendChild(node);
+        }
+        const px = c === 0 ? 0 : c * ts - ov;
+        const py = r === 0 ? 0 : r * ts - ov;
+        const right = Math.min(lw, (c + 1) * ts + (c === cols - 1 ? 0 : ov));
+        const bot = Math.min(lh, (r + 1) * ts + (r === rows - 1 ? 0 : ov));
+        node.style.left = (px / lw * b.w) + 'px';
+        node.style.top = (py / lh * b.h) + 'px';
+        node.style.width = ((right - px) / lw * b.w) + 'px';
+        node.style.height = ((bot - py) / lh * b.h) + 'px';
+      }
+    }
+    [...layer.children].forEach(n => { if (!want.has(n.dataset.k)) n.remove(); });
   }
   const resetZoom = (im, ms = 0) => applyZ(im, { s: 1, tx: 0, ty: 0 }, ms);
   function geom(im) { const r = im.getBoundingClientRect(), z = zs(im); return { ox: r.left - z.tx, oy: r.top - z.ty, w: r.width / z.s, h: r.height / z.s }; }
   function clampZ(im, z, g = geom(im)) {
-    const S = stage.getBoundingClientRect(), s = Math.max(1, Math.min(6, z.s));
+    const S = stage.getBoundingClientRect(), s = Math.max(1, Math.min(maxS(im), z.s));
     const lim = (o, len, t, s0, sl) => { const L = len * s; return L <= sl ? len * (1 - s) / 2 : Math.min(s0 - o, Math.max(s0 + sl - L - o, t)); };
     return { s, tx: lim(g.ox, g.w, z.tx, S.left, S.width), ty: lim(g.oy, g.h, z.ty, S.top, S.height) };
   }
   function zoomAt(im, s, cx, cy, ms = 0, live = false) {
-    const z = zs(im), g = geom(im); s = Math.max(1, Math.min(6, s));
+    const z = zs(im), g = geom(im); s = Math.max(1, Math.min(maxS(im), s));
     const tx = (cx - g.ox) - (s / z.s) * (cx - g.ox - z.tx), ty = (cy - g.oy) - (s / z.s) * (cy - g.oy - z.ty);
     applyZ(im, clampZ(im, { s, tx, ty }, g), ms, live);
   }
-  const toggleZoom = (x, y) => { const im = curImg(); zs(im).s > 1.01 ? resetZoom(im, 280) : zoomAt(im, 2.5, x, y, 300); };
+  const toggleZoom = (x, y) => { const im = curImg(); zs(im).s > 1.01 ? resetZoom(im, 280) : zoomAt(im, maxS(im), x, y, 300); };
 
   // ----- one gesture engine for mouse, pen and touch -----
   // 1 finger at zoom 1 → horizontal drag moves the carousel 1:1; 2 fingers → pinch zoom (never navigates);
@@ -582,7 +714,7 @@
     if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const im = curImg(), dx = e.clientX - st.x, dy = e.clientY - st.y;
     if (gest === 'pinch' && pts.size >= 2) {
-      const m = dist2(), s = Math.max(0.85, Math.min(7, pinch.s * m.d / pinch.d)), g = pinch.g;
+      const m = dist2(), s = Math.max(0.85, Math.min(maxS(im), pinch.s * m.d / pinch.d)), g = pinch.g;
       applyZ(im, { s, tx: (m.x - g.ox) - (s / pinch.s) * (pinch.x - g.ox - pinch.tx), ty: (m.y - g.oy) - (s / pinch.s) * (pinch.y - g.oy - pinch.ty) }, 0, true);
     } else if (gest === 'pending' && !multi) {
       if (Math.abs(dx) > 7 && Math.abs(dx) > Math.abs(dy) * 1.1) { gest = 'drag'; stage.classList.add('dragging'); st.off = offset; }
@@ -641,7 +773,7 @@
   }
   async function open(i, c) {
     if (!lb.hidden || !c?.list.length) return;
-    ctx = c; slides.forEach(s => { const im = s.firstElementChild; im.removeAttribute('src'); im.style.backgroundImage = ''; });
+    ctx = c; slides.forEach(s => { const im = slideImg(s); im.removeAttribute('src'); im.style.backgroundImage = ''; im._dzi = null; const tiles = s.querySelector('.lb-tiles'); if (tiles) { tiles.hidden = true; tiles.innerHTML = ''; } });
     lastFocus = document.activeElement; idx = i; panelI = -1; closing = false;
     lb.hidden = false; lockScroll(1);
     layout(); fill(0, i - 1); fill(1, i); fill(2, i + 1); setOffset(0); setPanel(i);
@@ -675,9 +807,11 @@
     json('content/welcome.json').catch(() => ({})), json('content/portfolio.json').catch(() => ({ artworks: [] })),
     json('content/commissions.json').catch(() => ({ tiers: [] })), json('content/contact.json').catch(() => ({ links: [] })),
     json('content/site.json').catch(() => ({})), json('content/thumbs.json').catch(() => ({})),
-  ]).then(([w, g, C, K, s, T]) => {
+    json('content/dzi.json').catch(() => ({})),
+  ]).then(([w, g, C, K, s, T, D]) => {
     T = T && typeof T === 'object' ? T : {};
     if (T.thumbs || T.sizes) { thumbs = T.thumbs || {}; sizes = T.sizes || {}; } else thumbs = T;
+    dziMap = D && typeof D === 'object' ? D : {};
     if (s.siteName) { $('#brandName').textContent = s.siteName; $('#footName').textContent = s.siteName; }
     if (s.logo) { const logo = $('#brandLogo'); if (logo) logo.src = asset(s.logo); }
     renderWelcome(w);
@@ -705,7 +839,13 @@
       `<span class="w">${[...w].map(c => `<span class="ch">${esc(c)}</span>`).join('')}</span>`).join('');
     const stackButton = (imgs, name, eager) => {
       const n = Math.min(imgs.length, 3), load = eager ? 'eager' : 'lazy';
-      const cards = imgs.slice(0, n).map((src, i) => `<span class="card c${i}" data-i="${i}"><img src="${esc(thumb(src))}" alt="" decoding="async" loading="${load}" draggable="false"></span>`).join('');
+      const cards = imgs.slice(0, n).map((src, i) => {
+        const z = sizeOf(src);
+        const ar = z && z[0] && z[1] ? z[0] / z[1] : '';
+        const dim = z && z[0] ? ` width="${z[0]}" height="${z[1]}"` : '';
+        const w = [240, 210, 190][i] || 200;
+        return `<span class="card c${i}" data-i="${i}" style="width:${w}px;${ar ? 'aspect-ratio:' + ar + ';' : ''}--ar:${ar || 1}"><img src="${esc(thumb(src))}" alt=""${dim} decoding="async" loading="${load}" draggable="false"></span>`;
+      }).join('');
       const label = imgs.length > 1 ? `View ${imgs.length} ${name || 'example'} photos full screen` : `View the ${name || 'example'} photo full screen`;
       return `<button class="tier-open" type="button" aria-label="${esc(label)}"><span class="stack ${imgs.length > 1 ? 'multi n' + n : 'n1'}">${cards}</span></button>`;
     };
@@ -719,6 +859,17 @@
           ${t.notes ? `<p class="tier-notes">${esc(t.notes)}</p>` : ''}
         </div></article>`).join('');
       stage.querySelectorAll('.tier-name').forEach(h => h.querySelectorAll('.ch').forEach((c, i) => c.style.setProperty('--i', i)));
+      stage.querySelectorAll('.stack img').forEach(im => {
+        if (im.closest('.card')?.style.getPropertyValue('--ar')) return;
+        const apply = () => {
+          if (!im.naturalWidth) return;
+          const card = im.closest('.card');
+          const ar = im.naturalWidth / im.naturalHeight;
+          card.style.setProperty('--ar', String(ar));
+          card.style.aspectRatio = String(ar);
+        };
+        im.complete && im.naturalWidth ? apply() : im.addEventListener('load', apply, { once: true });
+      });
       dots.innerHTML = list.length > 1 ? list.map((t, k) => `<button type="button" class="t-dot" data-k="${k}" aria-label="Show ${esc(t.name || 'tier ' + (k + 1))}"><i></i></button>`).join('') : '';
       $('#tiersCtrl').hidden = list.length < 2;
       cur = 0; show(0, 0, true);
@@ -788,7 +939,8 @@
     return 'Open the browser menu and choose Install app, or use the install icon in the address bar.';
   };
   const closeInstall = () => { if (installModal) installModal.hidden = true; };
-  if (installBtn && !standalone) {
+  const touchDevice = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
+  if (installBtn && !standalone && touchDevice) {
     installBtn.hidden = false;
     let deferred = null;
     addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; });

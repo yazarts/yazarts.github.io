@@ -66,7 +66,7 @@ content:
     fields:
       - name: artworks
         label: Artworks
-        description: Drag to reorder. The first one is the tall tile on the left. Tapping a tile shows the full original.
+        description: Drag to reorder. Each piece keeps its real shape. Tapping one opens it full screen.
         type: object
         list:
           collapsible:
@@ -82,7 +82,7 @@ content:
               path: images/artworks
           - name: featured
             label: Show bigger
-            description: Makes this piece a tall tile. The first artwork is always tall on computers and tablets.
+            description: Gives this piece two columns in the portfolio grid. It is still shown at its real shape, with nothing cropped.
             type: boolean
 
   - name: commissions

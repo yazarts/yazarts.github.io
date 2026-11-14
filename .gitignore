@@ -1,4 +1,8 @@
 node_modules/
+__pycache__/
 .DS_Store
+tiles/
+thumbs/
+content/dzi.json
 screenshots/*
 !screenshots/.gitkeep

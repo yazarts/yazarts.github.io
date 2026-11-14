@@ -1,5 +1,5 @@
 /* yazarts service worker. Bump VERSION to drop the previous caches on the next visit. */
-const VERSION = '4';
+const VERSION = '5';
 const SHELL = 'yazarts-shell-' + VERSION;
 const CONTENT = 'yazarts-content-' + VERSION;
 const KEEP = new Set([SHELL, CONTENT]);
@@ -61,8 +61,8 @@ self.addEventListener('fetch', event => {
   const url = new URL(req.url);
   const rest = restOf(url);
   if (rest == null) return;
-  // Original artwork and music stay on the network. Do not fill the device with them.
-  if (rest.startsWith('images/') || rest.startsWith('audio/') || rest.startsWith('thumbs/')) return;
+  // Originals, music, grid previews and deep-zoom tiles stay on the network. Tiles are never precached.
+  if (rest.startsWith('images/') || rest.startsWith('audio/') || rest.startsWith('thumbs/') || rest.startsWith('tiles/')) return;
   if (req.headers.get('range')) return;
   if (req.mode === 'navigate') {
     event.respondWith(networkFirst(req, SHELL));
