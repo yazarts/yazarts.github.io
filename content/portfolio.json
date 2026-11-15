@@ -10,7 +10,7 @@
     },
     {
       "image": "/images/artworks/img1593.jpeg",
-      "featured": false
+      "featured": true
     },
     {
       "image": "/images/artworks/img1452.jpeg",
@@ -26,7 +26,7 @@
     },
     {
       "image": "/images/artworks/Untitled192.jpg",
-      "featured": false
+      "featured": true
     },
     {
       "image": "/images/artworks/img1639.jpeg",
@@ -42,7 +42,7 @@
     },
     {
       "image": "/images/artworks/img1636.jpeg",
-      "featured": false
+      "featured": true
     },
     {
       "image": "/images/artworks/img1597.jpeg",
@@ -50,7 +50,7 @@
     },
     {
       "image": "/images/artworks/img1398.jpeg",
-      "featured": false
+      "featured": true
     },
     {
       "image": "/images/artworks/img1632.jpeg",
@@ -86,7 +86,7 @@
     },
     {
       "image": "/images/artworks/untitled125.jpg",
-      "featured": false
+      "featured": true
     },
     {
       "image": "/images/Untitled156.jpg",
@@ -94,7 +94,7 @@
     },
     {
       "image": "/images/Untitled168.jpg",
-      "featured": false
+      "featured": true
     },
     {
       "image": "/images/Untitled174.jpg",
@@ -106,7 +106,7 @@
     },
     {
       "image": "/images/Untitled200.jpg",
-      "featured": false
+      "featured": true
     },
     {
       "image": "/images/artworks/untitled193restored.jpg",
