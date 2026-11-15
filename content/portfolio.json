@@ -2,7 +2,7 @@
   "artworks": [
     {
       "image": "/images/img1687.jpeg",
-      "featured": true
+      "featured": false
     },
     {
       "image": "/images/artworks/giant-girl-lake.jpg",
