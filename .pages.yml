@@ -70,7 +70,7 @@ content:
     fields:
       - name: artworks
         label: Artworks
-        description: Drag to reorder. Each piece keeps its real shape. Tapping one opens it full screen.
+        description: Drag to reorder. Each piece keeps its real shape in a sideways band of three rows. Tapping one opens it full screen.
         type: object
         list:
           collapsible:

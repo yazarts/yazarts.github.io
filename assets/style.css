@@ -29,7 +29,7 @@ button{font:inherit;color:inherit}
 .nav.solid{background:rgba(12,20,32,.96);border-color:var(--line)}
 .nav-inner{max-width:1200px;height:100%;margin:0 auto;padding:0 clamp(18px,4vw,40px);display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
 .nav-social,.menu-social{display:flex;align-items:center;gap:8px;min-width:0}
-.nav-social{margin-left:auto}
+.nav-social{margin-left:4px}
 .nav-social a,.menu-social a{width:34px;height:34px;border-radius:50%;border:1px solid rgba(236,228,216,.45);color:#ece4d8;display:grid;place-items:center;flex:none;background:transparent;transition:box-shadow .3s var(--ease),border-color .3s,background .3s}
 .nav-social a:hover,.menu-social a:hover,.nav-social a:focus-visible,.menu-social a:focus-visible{border-color:#d2ab7c;box-shadow:0 0 0 4px rgba(210,171,124,.28);background:rgba(210,171,124,.08)}
 .nav-social svg,.menu-social svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -145,18 +145,16 @@ html.js body.loaded .hero-text>:nth-child(1){transition-delay:.04s}.html.js body
    Smooth swiping: plain native overflow scrolling (no scroll-snap, no JS on touch), no mask-image or backdrop-filter on or over
    the scrolling layer (both force Safari to re-rasterise every frame), no hover transforms on touch, and every tile's size is
    fixed before its image loads, so nothing shifts while the band moves. */
-#portfolio{max-width:100%;overflow-x:clip;padding-top:clamp(18px,3vw,36px);padding-left:0;padding-right:0}
-.pf-wrap{position:relative;max-width:100%}
-.pf-scroll{max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scrollbar-width:thin;scrollbar-color:rgba(210,190,160,.25) transparent;
+#portfolio{width:100%;max-width:100%;min-width:0;overflow-x:clip;contain:inline-size;padding-top:clamp(18px,3vw,36px);padding-left:0;padding-right:0}
+.pf-wrap{position:relative;width:100%;max-width:100%;min-width:0;contain:inline-size}
+.pf-scroll{width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:clip;overscroll-behavior-x:contain;contain:inline-size;touch-action:pan-x pan-y;scrollbar-width:thin;scrollbar-color:rgba(210,190,160,.25) transparent;
   padding:6px clamp(18px,4vw,40px) 14px;scroll-padding:0 clamp(18px,4vw,40px);cursor:grab}
 .no-scroll .pf-scroll{cursor:default}
 .dragging .pf-scroll{cursor:grabbing}
 .dragging .tile{pointer-events:none}
 .pf-scroll::-webkit-scrollbar{height:6px}.pf-scroll::-webkit-scrollbar-thumb{background:rgba(210,190,160,.22);border-radius:6px}
 /* two rows that together fill most of the screen height */
-.pf-track{position:relative;height:auto;width:100%;min-width:0;max-width:100%}
-.pf-masonry .pf-scroll{overflow:visible;cursor:default;touch-action:pan-y;height:auto}
-.pf-masonry .pf-arrow,.pf-masonry .pf-hint,.pf-masonry .pf-edge{display:none}
+.pf-track{position:relative;height:clamp(420px,calc(100svh - var(--nav-h) - 150px),760px);width:max-content;min-width:100%;max-width:none}
 .brick{position:absolute;opacity:1}
 html.js .brick{opacity:0;transition:opacity .34s var(--ease);transition-delay:var(--d,0s)}
 html.js .pf-track.in .brick{opacity:1}
@@ -364,7 +362,7 @@ html.js .fade.in{opacity:1}
   .section-head{gap:12px}
   .nav-social{display:none}
   .menu-social{display:flex;flex-wrap:wrap;gap:10px;padding:4px 0 12px}
-  .pf-track{height:auto}
+  .pf-track{height:clamp(280px,62svh,460px)}
   .bio{padding:0;place-items:end center}
   .bio-card{grid-template-columns:1fr;gap:18px;max-height:92svh;border-radius:22px 22px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom));overflow-y:auto}
   .bio-photo{width:min(190px,52vw);justify-self:center;padding:8px 8px 26px;margin-top:6px}
@@ -435,12 +433,12 @@ html.intro-on,html.intro-on body{overflow:hidden}
 .lightbox.lb-wait::after{content:"";position:absolute;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));width:16px;height:16px;margin-left:-8px;border-radius:50%;border:2px solid rgba(236,228,216,.28);border-top-color:#d2ab7c;z-index:6;animation:lbspin .7s linear infinite}
 @keyframes lbspin{to{transform:rotate(360deg)}}
 @media (min-width:721px){
-  .hero.bg-ok .hero-bg img{transform:scale(1.06)}
+  .hero.bg-ok .hero-bg img{transform:none}
 }
 @media (max-width:720px){
   .hero h1{font-size:clamp(3.6rem,16vw,5rem)}
-  .hero-actions{flex-direction:column;align-items:flex-end;align-self:center;width:auto}
-  .hero-tools{position:static;order:-1;right:auto;bottom:auto}
+  .hero-actions{flex-direction:column;align-items:center;align-self:center;width:100%}
+  .hero-tools{position:static;order:-1;right:auto;bottom:auto;justify-content:center;width:auto}
   .hero h1,.section-head h2,.bio-body h2{margin-left:auto;margin-right:auto}
   .tier-name{margin-left:auto;margin-right:auto}
 }

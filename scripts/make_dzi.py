@@ -73,7 +73,9 @@ def main():
         preview_rel = 'tiles/' + rel + '.preview.jpg'
         try:
             vips('thumbnail', src, os.path.join(site, preview_rel), str(PREVIEW), '--size', 'down')
-            vips('dzsave', src, base, '--tile-size', '254', '--overlap', '1', '--suffix', '.jpg[Q=80,strip]')
+            # Q=92 and no chroma subsampling. The viewer still swaps in the original file once you zoom past the preview.
+            suffix = '.png' if low.endswith('.png') else '.jpg[Q=92,strip,subsample-mode=off]'
+            vips('dzsave', src, base, '--tile-size', '510', '--overlap', '1', '--suffix', suffix)
             # dzsave prints the full-image size in the .dzi file
             dzi_path = base + '.dzi'
             text = open(dzi_path, encoding='utf-8').read()

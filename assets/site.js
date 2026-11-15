@@ -114,7 +114,11 @@
   // element was wider than the screen (the old horizontal portfolio track did this).
   function pinX() {
     const root = document.scrollingElement || document.documentElement;
-    if (root.scrollLeft || window.scrollX) window.scrollTo(0, root.scrollTop || window.scrollY || 0);
+    const y = window.scrollY || root.scrollTop || 0;
+    if (window.scrollX || root.scrollLeft) window.scrollTo(0, y);
+    const vv = window.visualViewport;
+    // Chrome on iPad shifts the visual viewport left after a rotation when the page scale drifts from 1.
+    if (vv && Math.abs(vv.offsetLeft) > 0.5) window.scrollTo(0, y);
   }
   const pinLater = () => { pinX(); requestAnimationFrame(pinX); [50, 150, 400, 800].forEach(ms => setTimeout(pinX, ms)); };
   // Artwork is harder to save: no context menu, no drag, no iOS long-press sheet. Taps and pinches still go through.
@@ -258,9 +262,9 @@
     return { set, toggle };
   })();
 
-  // ---------- portfolio: masonry of the real aspect ratios (nothing is cropped) ----------
-  // Column count follows the screen. A piece marked "Show bigger" spans two columns. Sizes from
-  // content/thumbs.json reserve the box before the file arrives, so the grid does not jump.
+  // ---------- portfolio: 3-row sideways band, each tile as wide as its real ratio ----------
+  // The track is wider than the screen, but it lives inside a scroller that is width:100% and
+  // contain:inline-size, so that width never becomes the page's scrollWidth (the old rotation shift).
   const pf = (() => {
     const scroller = $('#pfScroll'), track = $('#pfTrack'), wrapEl = $('#pfWrap'), hint = $('#pfHint');
     let lastW = 0;
@@ -281,27 +285,22 @@
     };
     function pack() {
       if (!art.length) return;
-      const gap = innerWidth < 720 ? 10 : 14;
-      const cols = innerWidth < 800 ? 2 : 3;
-      const W = scroller.clientWidth - (parseFloat(getComputedStyle(scroller).paddingLeft) + parseFloat(getComputedStyle(scroller).paddingRight));
-      const colW = (W - gap * (cols - 1)) / cols;
-      const heights = Array(cols).fill(0);
+      const gap = innerWidth < 720 ? 8 : 12;
+      const rows = 3;
+      const H = track.clientHeight || parseFloat(getComputedStyle(track).height) || 480;
+      const rowH = (H - gap * (rows - 1)) / rows;
+      const lanes = [0, 0, 0];
       const rects = [];
       art.forEach((a, i) => {
-        const ar = Math.max(0.2, aspectOf(i));
-        let span = a.featured === true && cols > 1 ? 2 : 1;
-        let best = 0, bestH = Infinity;
-        for (let c = 0; c <= cols - span; c++) {
-          const h = Math.max(...heights.slice(c, c + span));
-          if (h < bestH) { bestH = h; best = c; }
-        }
-        const w = colW * span + gap * (span - 1);
-        const h = w / ar;
-        rects[i] = { x: best * (colW + gap), y: bestH, w, h };
-        for (let c = best; c < best + span; c++) heights[c] = bestH + h + gap;
+        const ar = Math.max(0.35, Math.min(2.4, aspectOf(i)));
+        const w = rowH * ar;
+        let lane = 0;
+        for (let r = 1; r < rows; r++) if (lanes[r] < lanes[lane]) lane = r;
+        rects[i] = { x: lanes[lane], y: lane * (rowH + gap), w, h: rowH };
+        lanes[lane] += w + gap;
       });
-      track.style.width = '100%';
-      track.style.height = Math.max(0, Math.max(...heights) - gap) + 'px';
+      const width = Math.max(1, Math.max(...lanes) - gap);
+      track.style.width = width + 'px';
       track.querySelectorAll('.brick').forEach(b => {
         const r = rects[+b.dataset.i]; if (!r) return;
         b.style.left = r.x + 'px'; b.style.top = r.y + 'px'; b.style.width = r.w + 'px'; b.style.height = r.h + 'px';
@@ -477,7 +476,26 @@
   function maxS(im) {
     const b = im._b, iw = +im.dataset.iw || im.naturalWidth || 0, ih = +im.dataset.ih || im.naturalHeight || 0;
     if (!b?.w || !iw) return 4;
-    return Math.max(1, iw / b.w, ih / b.h);
+    // Fully zoomed means one original pixel per device pixel, so a retina screen is not shown a blown-up preview.
+    const d = Math.max(1, window.devicePixelRatio || 1);
+    return Math.max(1, (iw / d) / b.w, (ih / d) / b.h);
+  }
+  // Past the preview's own pixels, swap in the untouched original. Tiles were JPEG-80 and then CSS-scaled, which stayed soft.
+  function ensureOriginal(im, s) {
+    const full = im.dataset.full;
+    if (!full || im.getAttribute('src') === full || im.dataset.fullPending === '1') return;
+    const b = im._b; if (!b?.w) return;
+    const d = Math.max(1, window.devicePixelRatio || 1);
+    const need = b.w * Math.max(1, s) * d;
+    const have = im.naturalWidth || 0;
+    if (have && need > have + 8) {
+      im.dataset.fullPending = '1';
+      im._dzi = null;
+      const layer = im.parentElement && im.parentElement.querySelector('.lb-tiles');
+      if (layer) { layer.hidden = true; layer.innerHTML = ''; }
+      im.addEventListener('load', () => { im.dataset.fullPending = ''; if (im.naturalWidth) { im.dataset.iw = im.naturalWidth; im.dataset.ih = im.naturalHeight; } }, { once: true });
+      im.src = full;
+    }
   }
   function fit(im) {
     const s = im.closest('.lb-slide'), cs = getComputedStyle(s);
@@ -610,14 +628,9 @@
   function applyZ(im, z, ms = 0, live = false) {
     const prev = Z.get(im); Z.set(im, z); clearTimeout(im._hiT);
     const b = im._b || { w: im.clientWidth, h: im.clientHeight };
-    if (im._dzi) {
-      im.classList.remove('hi');
-      im.style.transition = ms && !reduce ? `transform ${ms}ms ${EASE}` : 'none';
-      lowForm(im, z);
-      if (im === curImg()) lb.classList.toggle('zoomed', z.s > 1.01);
-      updateTiles(im, z);
-      return;
-    }
+    ensureOriginal(im, z.s);
+    const layer = im.parentElement && im.parentElement.querySelector('.lb-tiles');
+    if (layer) { layer.hidden = true; }
     if (z.s > 1.01 && !ms && !live) {
       im.style.transition = 'none'; im.classList.add('hi');
       im.style.width = b.w * z.s + 'px'; im.style.height = b.h * z.s + 'px';
@@ -629,7 +642,6 @@
       if (z.s > 1.01) im._hiT = setTimeout(() => { if (Z.get(im) === z && gest !== 'pinch') applyZ(im, z); }, (ms && !reduce ? ms : 0) + 140);
     }
     if (im === curImg()) lb.classList.toggle('zoomed', z.s > 1.01);
-    if (im._dzi) updateTiles(im, z);
   }
   // Deep Zoom: once the visitor zooms, only the tiles covering the visible area are fetched.
   // They sit in the same box as the screen-sized preview and share its transform, so pinch,
