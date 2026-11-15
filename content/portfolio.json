@@ -2,11 +2,11 @@
   "artworks": [
     {
       "image": "/images/img1687.jpeg",
-      "featured": false
+      "featured": true
     },
     {
       "image": "/images/artworks/giant-girl-lake.jpg",
-      "featured": false
+      "featured": true
     },
     {
       "image": "/images/artworks/img1593.jpeg",
