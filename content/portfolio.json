@@ -1,6 +1,14 @@
 {
   "artworks": [
     {
+      "image": "/images/artworks/img1710.jpeg",
+      "featured": false
+    },
+    {
+      "image": "/images/img1709.jpeg",
+      "featured": true
+    },
+    {
       "image": "/images/img1687.jpeg",
       "featured": true
     },
