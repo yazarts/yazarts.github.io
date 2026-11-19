@@ -2,7 +2,7 @@
   "artworks": [
     {
       "image": "/images/artworks/img1710.jpeg",
-      "featured": false
+      "featured": true
     },
     {
       "image": "/images/img1709.jpeg",
