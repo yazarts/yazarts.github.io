@@ -122,11 +122,11 @@
   }
   const pinLater = () => { pinX(); requestAnimationFrame(pinX); [50, 150, 400, 800].forEach(ms => setTimeout(pinX, ms)); };
   // Artwork is harder to save: no context menu, no drag, no iOS long-press sheet. Taps and pinches still go through.
-  const artTarget = (el) => el && el.closest && el.closest('.tile, .stack, .lb-frame, .lb-tiles, .lightbox');
+  const artTarget = (el) => el && el.closest && el.closest('.tile, .stack, .lb-frame, .lb-tiles, .lightbox, .bio-photo, .hero-bg, .hero-shield, #heroBg, #bioPhoto');
   addEventListener('contextmenu', (e) => { if (artTarget(e.target)) e.preventDefault(); }, true);
   addEventListener('dragstart', (e) => { if (artTarget(e.target)) e.preventDefault(); }, true);
   function shieldArt(root) {
-    (root || document).querySelectorAll('.tile img, .stack img, .lb-frame img, .lb-tiles img').forEach(el => {
+    (root || document).querySelectorAll('.tile img, .stack img, .lb-frame img, .lb-tiles img, .bio-photo img, .hero-bg img').forEach(el => {
       el.draggable = false;
       el.setAttribute('draggable', 'false');
       el.style.webkitTouchCallout = 'none';
@@ -148,6 +148,7 @@
     const noAi = $('#noAiText');
     if (noAi) noAi.textContent = String(w.noAiText ?? '').trim() || NO_AI_DEFAULT;
     $('#lb')?.classList.toggle('no-mark', w.watermark === false);
+    shieldArt(document);
     // full-cover background illustration; without one the calm navy background shows
     const bg = w.heroBackground;
     if (bg) {
