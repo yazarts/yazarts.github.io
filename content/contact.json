@@ -6,7 +6,7 @@
     "url": "https://instagram.com/yazarts"
   },
   "tiktok": {
-    "show": true,
+    "show": false,
     "url": "https://www.tiktok.com/@yaz.arts"
   },
   "reddit": {
@@ -22,11 +22,11 @@
     "url": "its.yazarts@gmail.com"
   },
   "youtube": {
-    "show": true,
+    "show": false,
     "url": "Wuuw"
   },
   "patreon": {
-    "show": true,
+    "show": false,
     "url": "3e"
   }
 }
