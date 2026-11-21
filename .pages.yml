@@ -84,6 +84,11 @@ content:
             options:
               media: images
               path: images/artworks
+          - name: bigger
+            label: Slightly bigger
+            description: A little larger than the other pieces. It stays on one row, at its real shape, with nothing cropped.
+            type: boolean
+            default: false
 
   - name: commissions
     label: Commissions

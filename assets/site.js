@@ -121,14 +121,16 @@
     if (vv && Math.abs(vv.offsetLeft) > 0.5) window.scrollTo(0, y);
   }
   const pinLater = () => { pinX(); requestAnimationFrame(pinX); [50, 150, 400, 800].forEach(ms => setTimeout(pinX, ms)); };
-  // Artwork is harder to save: no context menu, no drag, no iOS long-press sheet. Taps and pinches still go through.
-  const artTarget = (el) => el && el.closest && el.closest('.tile, .stack, .lb-frame, .lb-tiles, .lightbox, .bio-photo, .hero-bg, .hero-shield, #heroBg, #bioPhoto');
-  addEventListener('contextmenu', (e) => { if (artTarget(e.target)) e.preventDefault(); }, true);
-  addEventListener('dragstart', (e) => { if (artTarget(e.target)) e.preventDefault(); }, true);
+  // Every picture is harder to save: no context menu, no drag, no iOS long-press sheet.
+  // Text can still be selected, and links, buttons, the menu, the viewer and swipes still work.
+  const mediaTarget = (el) => el && el.closest && el.closest('img, svg, video, canvas, picture');
+  addEventListener('contextmenu', (e) => { if (mediaTarget(e.target)) e.preventDefault(); }, true);
+  addEventListener('dragstart', (e) => { if (mediaTarget(e.target)) e.preventDefault(); }, true);
+  addEventListener('selectstart', (e) => { if (mediaTarget(e.target)) e.preventDefault(); }, true);
   function shieldArt(root) {
-    (root || document).querySelectorAll('.tile img, .stack img, .lb-frame img, .lb-tiles img, .bio-photo img, .hero-bg img').forEach(el => {
+    (root || document).querySelectorAll('img, svg, video, canvas').forEach(el => {
       el.draggable = false;
-      el.setAttribute('draggable', 'false');
+      if (el.setAttribute) el.setAttribute('draggable', 'false');
       el.style.webkitTouchCallout = 'none';
       el.style.webkitUserDrag = 'none';
       el.style.webkitUserSelect = 'none';
@@ -282,6 +284,7 @@
       const navS = $('#navSocial'), menuS = $('#menuSocial');
       if (navS) { navS.innerHTML = bar; navS.hidden = !bar; }
       if (menuS) { menuS.innerHTML = bar; menuS.hidden = !bar; }
+      shieldArt(document);
       fitNav();
     }
     function toggle(force) {
@@ -309,28 +312,62 @@
       if (im && im.naturalWidth && im.naturalHeight) return im.naturalWidth / im.naturalHeight;
       return 1;
     };
+    // Slightly bigger stays on one row: about 1.22x a normal tile, never two rows.
+    const BIGGER = 1.22;
+    const biggerOf = (a) => {
+      if (!a) return false;
+      if (a.bigger === true || a.bigger === 'true') return true;
+      if (a.bigger === false || a.bigger === 'false') return false;
+      const s = String(a.size || '').trim().toLowerCase();
+      if (s === 'bigger' || s === 'large' || s === 'big') return true;
+      if (s === 'normal' || s === 'small') return false;
+      return a.featured === true || a.featured === 'true';
+    };
     const html = (a, i) => {
       const z = sizeOf(a.image);
       const known = z && z[0] && z[1];
       const ar = known ? (z[0] / z[1]) : 1;
       const dim = known ? ` width="${z[0]}" height="${z[1]}"` : '';
-      return `<div class="brick" data-i="${i}" data-known="${known ? 1 : 0}" style="--d:${Math.min(i, 8) * 0.03}s;--ar:${ar}"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
+      const big = biggerOf(a);
+      return `<div class="brick${big ? ' bigger' : ''}" data-i="${i}" data-known="${known ? 1 : 0}" data-bigger="${big ? 1 : 0}" style="--d:${Math.min(i, 8) * 0.03}s;--ar:${ar}"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
         <img src="${esc(thumb(a.image))}" alt="Artwork ${i + 1} by @yazarts"${dim} style="aspect-ratio:${ar}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" draggable="false"></button></div>`;
     };
     function pack() {
       if (!art.length) return;
-      const gap = innerWidth < 720 ? 8 : 12;
+      const gap = innerWidth < 720 ? 6 : 9;
       const rows = 3;
       const H = track.clientHeight || parseFloat(getComputedStyle(track).height) || 480;
-      const rowH = (H - gap * (rows - 1)) / rows;
+      const ars = art.map((_, i) => Math.max(0.35, Math.min(2.4, aspectOf(i))));
+      const flags = art.map(biggerOf);
+      let base = (H - gap * (rows - 1)) / rows;
+      let laneOf = [];
+      for (let pass = 0; pass < 2; pass++) {
+        const lanes = [0, 0, 0];
+        laneOf = [];
+        art.forEach((_, i) => {
+          const w = base * (flags[i] ? BIGGER : 1) * ars[i];
+          let lane = 0;
+          for (let r = 1; r < rows; r++) if (lanes[r] < lanes[lane]) lane = r;
+          laneOf[i] = lane;
+          lanes[lane] += w + gap;
+        });
+        const tall = [false, false, false];
+        laneOf.forEach((lane, i) => { if (flags[i]) tall[lane] = true; });
+        const weight = tall.reduce((sum, t) => sum + (t ? BIGGER : 1), 0);
+        base = (H - gap * (rows - 1)) / weight;
+      }
+      const tall = [false, false, false];
+      laneOf.forEach((lane, i) => { if (flags[i]) tall[lane] = true; });
+      const slot = tall.map(t => base * (t ? BIGGER : 1));
+      const laneY = [0, 0, 0];
+      for (let r = 1; r < rows; r++) laneY[r] = laneY[r - 1] + slot[r - 1] + gap;
       const lanes = [0, 0, 0];
       const rects = [];
-      art.forEach((a, i) => {
-        const ar = Math.max(0.35, Math.min(2.4, aspectOf(i)));
-        const w = rowH * ar;
-        let lane = 0;
-        for (let r = 1; r < rows; r++) if (lanes[r] < lanes[lane]) lane = r;
-        rects[i] = { x: lanes[lane], y: lane * (rowH + gap), w, h: rowH };
+      art.forEach((_, i) => {
+        const h = base * (flags[i] ? BIGGER : 1);
+        const w = h * ars[i];
+        const lane = laneOf[i];
+        rects[i] = { x: lanes[lane], y: laneY[lane] + (slot[lane] - h) / 2, w, h };
         lanes[lane] += w + gap;
       });
       const width = Math.max(1, Math.max(...lanes) - gap);
