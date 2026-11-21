@@ -70,7 +70,7 @@ content:
     fields:
       - name: artworks
         label: Artworks
-        description: Drag to reorder. Each piece keeps its real shape in a sideways band of three rows. Tapping one opens it full screen.
+        description: Drag to reorder. Each piece keeps its real shape in a sideways band of two rows. Tapping one opens it full screen.
         type: object
         list:
           collapsible:
@@ -84,11 +84,6 @@ content:
             options:
               media: images
               path: images/artworks
-          - name: bigger
-            label: Slightly bigger
-            description: A little larger than the other pieces. It stays on one row, at its real shape, with nothing cropped.
-            type: boolean
-            default: false
 
   - name: commissions
     label: Commissions

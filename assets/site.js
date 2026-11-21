@@ -299,9 +299,10 @@
     return { set, toggle };
   })();
 
-  // ---------- portfolio: 3-row sideways band, each tile as wide as its real ratio ----------
-  // The track is wider than the screen, but it lives inside a scroller that is width:100% and
-  // contain:inline-size, so that width never becomes the page's scrollWidth (the old rotation shift).
+  // ---------- portfolio: 2-row sideways band, each tile as wide as its real ratio ----------
+  // The track keeps the same height the 3-row band used, so each tile is about 1.5x taller.
+  // It lives inside a scroller that is width:100% and contain:inline-size, so that width
+  // never becomes the page's scrollWidth (the old rotation shift).
   const pf = (() => {
     const scroller = $('#pfScroll'), track = $('#pfTrack'), wrapEl = $('#pfWrap'), hint = $('#pfHint');
     let lastW = 0;
@@ -312,62 +313,27 @@
       if (im && im.naturalWidth && im.naturalHeight) return im.naturalWidth / im.naturalHeight;
       return 1;
     };
-    // Slightly bigger stays on one row: about 1.22x a normal tile, never two rows.
-    const BIGGER = 1.22;
-    const biggerOf = (a) => {
-      if (!a) return false;
-      if (a.bigger === true || a.bigger === 'true') return true;
-      if (a.bigger === false || a.bigger === 'false') return false;
-      const s = String(a.size || '').trim().toLowerCase();
-      if (s === 'bigger' || s === 'large' || s === 'big') return true;
-      if (s === 'normal' || s === 'small') return false;
-      return a.featured === true || a.featured === 'true';
-    };
     const html = (a, i) => {
       const z = sizeOf(a.image);
       const known = z && z[0] && z[1];
       const ar = known ? (z[0] / z[1]) : 1;
       const dim = known ? ` width="${z[0]}" height="${z[1]}"` : '';
-      const big = biggerOf(a);
-      return `<div class="brick${big ? ' bigger' : ''}" data-i="${i}" data-known="${known ? 1 : 0}" data-bigger="${big ? 1 : 0}" style="--d:${Math.min(i, 8) * 0.03}s;--ar:${ar}"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
+      return `<div class="brick" data-i="${i}" data-known="${known ? 1 : 0}" style="--d:${Math.min(i, 8) * 0.03}s;--ar:${ar}"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
         <img src="${esc(thumb(a.image))}" alt="Artwork ${i + 1} by @yazarts"${dim} style="aspect-ratio:${ar}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" draggable="false"></button></div>`;
     };
     function pack() {
       if (!art.length) return;
       const gap = innerWidth < 720 ? 6 : 9;
-      const rows = 3;
+      const rows = 2;
       const H = track.clientHeight || parseFloat(getComputedStyle(track).height) || 480;
-      const ars = art.map((_, i) => Math.max(0.35, Math.min(2.4, aspectOf(i))));
-      const flags = art.map(biggerOf);
-      let base = (H - gap * (rows - 1)) / rows;
-      let laneOf = [];
-      for (let pass = 0; pass < 2; pass++) {
-        const lanes = [0, 0, 0];
-        laneOf = [];
-        art.forEach((_, i) => {
-          const w = base * (flags[i] ? BIGGER : 1) * ars[i];
-          let lane = 0;
-          for (let r = 1; r < rows; r++) if (lanes[r] < lanes[lane]) lane = r;
-          laneOf[i] = lane;
-          lanes[lane] += w + gap;
-        });
-        const tall = [false, false, false];
-        laneOf.forEach((lane, i) => { if (flags[i]) tall[lane] = true; });
-        const weight = tall.reduce((sum, t) => sum + (t ? BIGGER : 1), 0);
-        base = (H - gap * (rows - 1)) / weight;
-      }
-      const tall = [false, false, false];
-      laneOf.forEach((lane, i) => { if (flags[i]) tall[lane] = true; });
-      const slot = tall.map(t => base * (t ? BIGGER : 1));
-      const laneY = [0, 0, 0];
-      for (let r = 1; r < rows; r++) laneY[r] = laneY[r - 1] + slot[r - 1] + gap;
-      const lanes = [0, 0, 0];
+      const rowH = (H - gap * (rows - 1)) / rows;
+      const lanes = [0, 0];
       const rects = [];
-      art.forEach((_, i) => {
-        const h = base * (flags[i] ? BIGGER : 1);
-        const w = h * ars[i];
-        const lane = laneOf[i];
-        rects[i] = { x: lanes[lane], y: laneY[lane] + (slot[lane] - h) / 2, w, h };
+      art.forEach((a, i) => {
+        const ar = Math.max(0.35, Math.min(2.4, aspectOf(i)));
+        const w = rowH * ar;
+        const lane = lanes[1] < lanes[0] ? 1 : 0;
+        rects[i] = { x: lanes[lane], y: lane * (rowH + gap), w, h: rowH };
         lanes[lane] += w + gap;
       });
       const width = Math.max(1, Math.max(...lanes) - gap);

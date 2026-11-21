@@ -366,7 +366,7 @@ html.js .fade.in{opacity:1}
   .section-head{gap:12px}
   .nav-social{display:none}
   .menu-social{display:flex;flex-wrap:wrap;gap:10px;padding:4px 0 12px}
-  .pf-track{height:clamp(280px,62svh,460px)}
+  .pf-track{height:clamp(280px,min(62svh,75svh),460px)}
   .bio{padding:0;place-items:end center}
   .bio-card{grid-template-columns:1fr;gap:18px;max-height:92svh;border-radius:22px 22px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom));overflow-y:auto}
   .bio-photo{width:min(190px,52vw);justify-self:center;padding:8px 8px 26px;margin-top:6px}
