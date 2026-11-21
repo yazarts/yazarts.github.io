@@ -84,17 +84,6 @@ content:
             options:
               media: images
               path: images/artworks
-          - name: size
-            label: Size
-            description: Large spans two rows, so it is about twice as tall and wide. The picture keeps its real shape and is not cropped.
-            type: select
-            default: normal
-            options:
-              values:
-                - name: normal
-                  label: Normal
-                - name: large
-                  label: Large
 
   - name: commissions
     label: Commissions

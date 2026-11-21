@@ -309,21 +309,12 @@
       if (im && im.naturalWidth && im.naturalHeight) return im.naturalWidth / im.naturalHeight;
       return 1;
     };
-    // Size "large" (or the older featured flag) spans two rows. Width follows the same ratio, so it is about twice as big, with nothing cropped.
-    const largeOf = (a) => {
-      if (!a) return false;
-      const s = String(a.size || '').trim().toLowerCase();
-      if (s === 'large' || s === 'big') return true;
-      if (s === 'normal' || s === 'small') return false;
-      return a.featured === true || a.featured === 'true';
-    };
     const html = (a, i) => {
       const z = sizeOf(a.image);
       const known = z && z[0] && z[1];
       const ar = known ? (z[0] / z[1]) : 1;
       const dim = known ? ` width="${z[0]}" height="${z[1]}"` : '';
-      const large = largeOf(a);
-      return `<div class="brick${large ? ' large' : ''}" data-i="${i}" data-known="${known ? 1 : 0}" data-size="${large ? 'large' : 'normal'}" style="--d:${Math.min(i, 8) * 0.03}s;--ar:${ar}"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
+      return `<div class="brick" data-i="${i}" data-known="${known ? 1 : 0}" style="--d:${Math.min(i, 8) * 0.03}s;--ar:${ar}"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
         <img src="${esc(thumb(a.image))}" alt="Artwork ${i + 1} by @yazarts"${dim} style="aspect-ratio:${ar}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" draggable="false"></button></div>`;
     };
     function pack() {
@@ -333,49 +324,14 @@
       const H = track.clientHeight || parseFloat(getComputedStyle(track).height) || 480;
       const rowH = (H - gap * (rows - 1)) / rows;
       const lanes = [0, 0, 0];
-      const holes = [[], [], []];
       const rects = [];
-      const takeHole = (w) => {
-        let best = null;
-        for (let r = 0; r < rows; r++) holes[r].forEach((h, k) => {
-          if (h.w + 0.5 >= w && (!best || h.x < best.x)) best = { r, k, x: h.x };
-        });
-        if (!best) return null;
-        const h = holes[best.r][best.k];
-        const left = h.w - w - gap;
-        if (left > 24) holes[best.r][best.k] = { x: best.x + w + gap, w: left };
-        else holes[best.r].splice(best.k, 1);
-        return { x: best.x, y: best.r * (rowH + gap), w, h: rowH };
-      };
       art.forEach((a, i) => {
         const ar = Math.max(0.35, Math.min(2.4, aspectOf(i)));
-        if (largeOf(a)) {
-          let best = 0, bestKey = Infinity, x = 0;
-          const shortest = Math.min(...lanes);
-          for (let r = 0; r < rows - 1; r++) {
-            const start = Math.max(lanes[r], lanes[r + 1]);
-            const waste = start - Math.min(lanes[r], lanes[r + 1]);
-            const coversShort = (lanes[r] === shortest || lanes[r + 1] === shortest) ? 0 : 1;
-            const key = start * 1e6 + coversShort * 1e3 + waste;
-            if (key < bestKey) { bestKey = key; best = r; x = start; }
-          }
-          const h = rowH * 2 + gap;
-          const w = h * ar;
-          rects[i] = { x, y: best * (rowH + gap), w, h };
-          for (const r of [best, best + 1]) {
-            const slack = x - lanes[r] - gap;
-            if (slack > 36) holes[r].push({ x: lanes[r], w: slack });
-          }
-          lanes[best] = lanes[best + 1] = x + w + gap;
-        } else {
-          const w = rowH * ar;
-          const hole = takeHole(w);
-          if (hole) { rects[i] = hole; return; }
-          let lane = 0;
-          for (let r = 1; r < rows; r++) if (lanes[r] < lanes[lane]) lane = r;
-          rects[i] = { x: lanes[lane], y: lane * (rowH + gap), w, h: rowH };
-          lanes[lane] += w + gap;
-        }
+        const w = rowH * ar;
+        let lane = 0;
+        for (let r = 1; r < rows; r++) if (lanes[r] < lanes[lane]) lane = r;
+        rects[i] = { x: lanes[lane], y: lane * (rowH + gap), w, h: rowH };
+        lanes[lane] += w + gap;
       });
       const width = Math.max(1, Math.max(...lanes) - gap);
       track.style.width = width + 'px';
