@@ -204,7 +204,8 @@
     kofi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8Z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M10.5 15.5s-3-1.8-3-3.6a1.5 1.5 0 0 1 3-.4 1.5 1.5 0 0 1 3 .4c0 1.8-3 3.6-3 3.6Z" fill="currentColor" stroke="none"/></svg>',
     x: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.7 3h3.1l-6.8 7.7L22 21h-6.3l-4.9-6.4L5.2 21H2.1l7.2-8.3L1.7 3h6.4l4.4 5.9L17.7 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11 14.5Z"/></svg>',
     tiktok: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3a4.8 4.8 0 0 0 4 4.3v3.2a8 8 0 0 1-4-1.2v6.2A5.7 5.7 0 1 1 10.9 10v3.3a2.5 2.5 0 1 0 2.4 2.5V3h3.3Z"/></svg>',
-    youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8ZM9.8 15V9l5.8 3-5.8 3Z"/></svg>',
+    youtube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="3"/><path d="M10.5 9.8v4.4l4.6-2.2z" fill="currentColor" stroke="none"/></svg>',
+    patreon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="4.2" y="4" width="3.2" height="16" rx=".6"/><circle cx="14.8" cy="9.2" r="4.6"/></svg>',
     email: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 7l8 6 8-6"/></svg>',
     link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>',
   };
@@ -214,20 +215,56 @@
     reddit: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.2" r="6"/><circle cx="9.4" cy="12.6" r=".7" fill="currentColor" stroke="none"/><circle cx="14.6" cy="12.6" r=".7" fill="currentColor" stroke="none"/><path d="M9.6 15.5c.8.7 1.6.9 2.4.9s1.6-.2 2.4-.9"/><circle cx="17.4" cy="7" r="1.1"/><path d="M16.6 8 14.2 7.4"/></svg>',
     kofi: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9h9.5v5.2A3.3 3.3 0 0 1 12.2 17h-1.6A3.3 3.3 0 0 1 7.3 13.7V9"/><path d="M15.5 10h1.3a2 2 0 0 1 0 4H15.5"/><path d="M11 14.6s-1.5-.9-1.5-1.8a.9.9 0 0 1 1.6-.4.9.9 0 0 1 1.6.4c0 .9-1.7 1.8-1.7 1.8z"/></svg>',
     youtube: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="11" rx="3"/><path d="M11 10.2v4.2l4.2-2.1z" fill="currentColor" stroke="none"/></svg>',
+    patreon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.2" y="4" width="3.2" height="16" rx=".6"/><circle cx="14.8" cy="9.2" r="4.6"/></svg>',
     x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    email: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 7l8 6 8-6"/></svg>',
   };
   const iconFor = (label, url) => {
     const s = (label + ' ' + url).toLowerCase().replace(/[^a-z]/g, '');
     if (s.includes('instagram')) return ICON.instagram; if (s.includes('reddit')) return ICON.reddit; if (s.includes('kofi')) return ICON.kofi;
-    if (s.includes('tiktok')) return ICON.tiktok; if (s.includes('youtube')) return ICON.youtube; if (/twitter|xcom/.test(s) || label.trim().toLowerCase() === 'x') return ICON.x;
+    if (s.includes('tiktok')) return ICON.tiktok; if (s.includes('youtube')) return ICON.youtube; if (s.includes('patreon')) return ICON.patreon;
+    if (/twitter|xcom/.test(s) || label.trim().toLowerCase() === 'x') return ICON.x;
+    if (s.includes('mail')) return ICON.email;
     return ICON.link;
   };
   const outlineFor = (label, url) => {
     const s = (label + ' ' + url).toLowerCase().replace(/[^a-z]/g, '');
     if (s.includes('instagram')) return OUT.instagram; if (s.includes('reddit')) return OUT.reddit; if (s.includes('kofi')) return OUT.kofi;
-    if (s.includes('tiktok')) return OUT.tiktok; if (s.includes('youtube')) return OUT.youtube; if (/twitter|xcom/.test(s) || String(label).trim().toLowerCase() === 'x') return OUT.x;
-    if (s.includes('mail')) return ICON.email;
+    if (s.includes('tiktok')) return OUT.tiktok; if (s.includes('youtube')) return OUT.youtube; if (s.includes('patreon')) return OUT.patreon;
+    if (/twitter|xcom/.test(s) || String(label).trim().toLowerCase() === 'x') return OUT.x;
+    if (s.includes('mail')) return OUT.email;
     return ICON.link;
+  };
+  const webUrl = (v) => {
+    let s = String(v || '').trim();
+    if (!s || /^mailto:/i.test(s)) return '';
+    if (!/^https?:\/\//i.test(s)) s = 'https://' + s.replace(/^\/+/, '');
+    try { const u = new URL(s); return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : ''; } catch { return ''; }
+  };
+  // Fixed contacts, in header order. Show off, or an empty link, hides that icon everywhere.
+  const CONTACT_DEFS = [
+    ['instagram', 'Instagram'], ['tiktok', 'TikTok'], ['reddit', 'Reddit'], ['kofi', 'Ko-fi'],
+    ['email', 'Email'], ['youtube', 'YouTube'], ['patreon', 'Patreon'],
+  ];
+  const shownContacts = (c) => {
+    c = c || {};
+    const modern = CONTACT_DEFS.some(([k]) => c[k] && typeof c[k] === 'object');
+    if (modern) {
+      return CONTACT_DEFS.flatMap(([key, label]) => {
+        const v = c[key];
+        if (!v || typeof v !== 'object' || v.show === false) return [];
+        if (key === 'email') {
+          const addr = mailAddress(v.url);
+          return addr ? [{ key, label, href: mailtoHref(addr), external: false }] : [];
+        }
+        const href = webUrl(v.url);
+        return href ? [{ key, label, href, external: true }] : [];
+      });
+    }
+    const links = (c.links || []).filter(l => l && l.url && l.show !== false);
+    const social = links.filter(l => !isEmailLink(l)).map(l => ({ key: '', label: l.label || handle(l.url), href: webUrl(l.url), external: true })).filter(l => l.href);
+    const addr = (typeof c.email === 'string' && c.showEmail !== false ? mailAddress(c.email) : '') || links.filter(isEmailLink).map(l => mailAddress(l.url)).find(Boolean) || '';
+    return social.concat(addr ? [{ key: 'email', label: 'Email', href: mailtoHref(addr), external: false }] : []);
   };
   const handle = (url) => { try { const u = new URL(url); const p = u.pathname.split('/').filter(Boolean).pop(); return p ? (p.startsWith('@') ? p : '@' + p) : u.hostname.replace(/^www\./, ''); } catch { return ''; } };
 
@@ -237,15 +274,11 @@
     function set(c) {
       if (c.buttonLabel) $('#contactLabel').textContent = c.buttonLabel;
       if (c.contactText != null) $('#contactText').textContent = c.contactText;
-      const links = (c.links || []).filter(l => l && l.url);
-      // An address belongs on the envelope. Drop email-shaped entries here so the chain icon is not a second, broken copy.
-      const social = links.filter(l => !isEmailLink(l));
-      const addr = mailAddress(c.email) || links.filter(isEmailLink).map(l => mailAddress(l.url)).find(Boolean) || '';
-      const mail = addr ? `<li class="mail"><a href="${esc(mailtoHref(addr))}" aria-label="${esc('Email ' + addr)}" title="Email"><span class="ico">${ICON.email}</span><span class="s-name">Email</span></a></li>` : '';
-      $('#socials').innerHTML = social.map(l => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener me" aria-label="${esc((l.label || handle(l.url)) + ' ' + handle(l.url))}" title="${esc(l.label || '')}">
-        <span class="ico">${iconFor(l.label || '', l.url)}</span><span class="s-name">${esc(l.label || handle(l.url))}</span></a></li>`).join('') + mail;
-      const bar = social.map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(l.label || handle(l.url))}">${outlineFor(l.label || '', l.url)}</a>`).join('')
-        + (addr ? `<a href="${esc(mailtoHref(addr))}" aria-label="${esc('Email ' + addr)}">${ICON.email}</a>` : '');
+      const items = shownContacts(c);
+      const linkAttrs = (l) => l.external ? ' target="_blank" rel="noopener me"' : '';
+      $('#socials').innerHTML = items.map(l => `<li class="${l.key === 'email' ? 'mail' : ''}"><a href="${esc(l.href)}"${linkAttrs(l)} aria-label="${esc(l.label + (l.external ? ' ' + handle(l.href) : ''))}" title="${esc(l.label)}">
+        <span class="ico">${iconFor(l.label, l.href)}</span><span class="s-name">${esc(l.label)}</span></a></li>`).join('');
+      const bar = items.map(l => `<a href="${esc(l.href)}"${l.external ? ' target="_blank" rel="noopener noreferrer"' : ''} aria-label="${esc(l.label)}">${outlineFor(l.key || l.label, l.href)}</a>`).join('');
       const navS = $('#navSocial'), menuS = $('#menuSocial');
       if (navS) { navS.innerHTML = bar; navS.hidden = !bar; }
       if (menuS) { menuS.innerHTML = bar; menuS.hidden = !bar; }
@@ -276,12 +309,21 @@
       if (im && im.naturalWidth && im.naturalHeight) return im.naturalWidth / im.naturalHeight;
       return 1;
     };
+    // Size "large" (or the older featured flag) spans two rows. Width follows the same ratio, so it is about twice as big, with nothing cropped.
+    const largeOf = (a) => {
+      if (!a) return false;
+      const s = String(a.size || '').trim().toLowerCase();
+      if (s === 'large' || s === 'big') return true;
+      if (s === 'normal' || s === 'small') return false;
+      return a.featured === true || a.featured === 'true';
+    };
     const html = (a, i) => {
       const z = sizeOf(a.image);
       const known = z && z[0] && z[1];
       const ar = known ? (z[0] / z[1]) : 1;
       const dim = known ? ` width="${z[0]}" height="${z[1]}"` : '';
-      return `<div class="brick" data-i="${i}" data-known="${known ? 1 : 0}" style="--d:${Math.min(i, 8) * 0.03}s;--ar:${ar}"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
+      const large = largeOf(a);
+      return `<div class="brick${large ? ' large' : ''}" data-i="${i}" data-known="${known ? 1 : 0}" data-size="${large ? 'large' : 'normal'}" style="--d:${Math.min(i, 8) * 0.03}s;--ar:${ar}"><button class="tile" type="button" data-i="${i}" aria-label="Open artwork ${i + 1} full screen">
         <img src="${esc(thumb(a.image))}" alt="Artwork ${i + 1} by @yazarts"${dim} style="aspect-ratio:${ar}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" draggable="false"></button></div>`;
     };
     function pack() {
@@ -291,14 +333,49 @@
       const H = track.clientHeight || parseFloat(getComputedStyle(track).height) || 480;
       const rowH = (H - gap * (rows - 1)) / rows;
       const lanes = [0, 0, 0];
+      const holes = [[], [], []];
       const rects = [];
+      const takeHole = (w) => {
+        let best = null;
+        for (let r = 0; r < rows; r++) holes[r].forEach((h, k) => {
+          if (h.w + 0.5 >= w && (!best || h.x < best.x)) best = { r, k, x: h.x };
+        });
+        if (!best) return null;
+        const h = holes[best.r][best.k];
+        const left = h.w - w - gap;
+        if (left > 24) holes[best.r][best.k] = { x: best.x + w + gap, w: left };
+        else holes[best.r].splice(best.k, 1);
+        return { x: best.x, y: best.r * (rowH + gap), w, h: rowH };
+      };
       art.forEach((a, i) => {
         const ar = Math.max(0.35, Math.min(2.4, aspectOf(i)));
-        const w = rowH * ar;
-        let lane = 0;
-        for (let r = 1; r < rows; r++) if (lanes[r] < lanes[lane]) lane = r;
-        rects[i] = { x: lanes[lane], y: lane * (rowH + gap), w, h: rowH };
-        lanes[lane] += w + gap;
+        if (largeOf(a)) {
+          let best = 0, bestKey = Infinity, x = 0;
+          const shortest = Math.min(...lanes);
+          for (let r = 0; r < rows - 1; r++) {
+            const start = Math.max(lanes[r], lanes[r + 1]);
+            const waste = start - Math.min(lanes[r], lanes[r + 1]);
+            const coversShort = (lanes[r] === shortest || lanes[r + 1] === shortest) ? 0 : 1;
+            const key = start * 1e6 + coversShort * 1e3 + waste;
+            if (key < bestKey) { bestKey = key; best = r; x = start; }
+          }
+          const h = rowH * 2 + gap;
+          const w = h * ar;
+          rects[i] = { x, y: best * (rowH + gap), w, h };
+          for (const r of [best, best + 1]) {
+            const slack = x - lanes[r] - gap;
+            if (slack > 36) holes[r].push({ x: lanes[r], w: slack });
+          }
+          lanes[best] = lanes[best + 1] = x + w + gap;
+        } else {
+          const w = rowH * ar;
+          const hole = takeHole(w);
+          if (hole) { rects[i] = hole; return; }
+          let lane = 0;
+          for (let r = 1; r < rows; r++) if (lanes[r] < lanes[lane]) lane = r;
+          rects[i] = { x: lanes[lane], y: lane * (rowH + gap), w, h: rowH };
+          lanes[lane] += w + gap;
+        }
       });
       const width = Math.max(1, Math.max(...lanes) - gap);
       track.style.width = width + 'px';

@@ -447,7 +447,7 @@ html.intro-on,html.intro-on body{overflow:hidden}
 }
 @media (min-width:721px){
   .nav.icons-in-menu .menu-btn{display:block}
-  .nav.icons-in-menu.menu-open .menu-social{display:flex;position:absolute;top:calc(100% + 8px);right:clamp(18px,4vw,40px);z-index:40;padding:10px;border-radius:16px;background:rgba(12,20,32,.97);border:1px solid var(--line);box-shadow:0 18px 40px -24px rgba(0,0,0,.8)}
+  .nav.icons-in-menu.menu-open .menu-social{display:flex;flex-wrap:wrap;max-width:min(320px,calc(100vw - 36px));position:absolute;top:calc(100% + 8px);right:clamp(18px,4vw,40px);z-index:40;padding:10px;border-radius:16px;background:rgba(12,20,32,.97);border:1px solid var(--line);box-shadow:0 18px 40px -24px rgba(0,0,0,.8)}
 }
 @media (prefers-reduced-motion:no-preference){
   .stack.multi .card{transition:transform .45s cubic-bezier(.2,.75,.2,1)}
@@ -506,4 +506,15 @@ html.intro-on,html.intro-on body{overflow:hidden}
     max-width:100%;max-height:none;margin:0;transform:none!important;overflow:hidden;background:transparent;
   }
   .stack.n1 .card img{display:block;width:100%;height:auto;max-width:100%;max-height:none;object-fit:contain;border-radius:16px}
+}
+/* iPad and small laptops: seven header icons stay beside the logo without covering the links. */
+@media (min-width:721px) and (max-width:1100px){
+  .brand{font-size:1.65rem}
+  .brand-logo{height:40px}
+  .brand-wrap{gap:8px}
+  .nav-social{gap:5px;margin-left:0}
+  .nav-social a{width:28px;height:28px}
+  .nav-social svg{width:14px;height:14px}
+  .nav nav{gap:14px}
+  .nav nav a{font-size:1.35rem}
 }

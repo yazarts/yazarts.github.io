@@ -1,23 +1,32 @@
 {
-  "email": "its.yazarts@gmail.com",
   "buttonLabel": "Not quite what you're looking for?",
   "contactText": "Contact me directly via:",
-  "links": [
-    {
-      "label": "Instagram",
-      "url": "https://instagram.com/yazarts"
-    },
-    {
-      "label": "TikTok",
-      "url": "https://www.tiktok.com/@yaz.arts"
-    },
-    {
-      "label": "Reddit",
-      "url": "https://www.reddit.com/user/yaz_arts"
-    },
-    {
-      "label": "Ko-fi",
-      "url": "https://ko-fi.com/yazarts"
-    }
-  ]
+  "instagram": {
+    "show": true,
+    "url": "https://instagram.com/yazarts"
+  },
+  "tiktok": {
+    "show": true,
+    "url": "https://www.tiktok.com/@yaz.arts"
+  },
+  "reddit": {
+    "show": true,
+    "url": "https://www.reddit.com/user/yaz_arts"
+  },
+  "kofi": {
+    "show": true,
+    "url": "https://ko-fi.com/yazarts"
+  },
+  "email": {
+    "show": true,
+    "url": "its.yazarts@gmail.com"
+  },
+  "youtube": {
+    "show": true,
+    "url": ""
+  },
+  "patreon": {
+    "show": true,
+    "url": ""
+  }
 }

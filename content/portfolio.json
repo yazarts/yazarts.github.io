@@ -2,115 +2,115 @@
   "artworks": [
     {
       "image": "/images/artworks/img1710.jpeg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/img1709.jpeg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/img1687.jpeg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/artworks/giant-girl-lake.jpg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/artworks/img1593.jpeg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/artworks/img1452.jpeg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/img1504.jpeg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/img1600.jpeg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/Untitled192.jpg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/artworks/img1639.jpeg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/img1637.jpeg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/img1696.jpeg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/img1636.jpeg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/artworks/img1597.jpeg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/artworks/img1398.jpeg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/artworks/img1632.jpeg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/img1478.jpeg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/untitled30.jpg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/artworks/untitled27.jpg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/untitled55.jpg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/untitled70.jpg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/artworks/untitled125.jpg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/Untitled156.jpg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/Untitled168.jpg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/Untitled174.jpg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/Untitled176.jpg",
-      "featured": false
+      "size": "normal"
     },
     {
       "image": "/images/Untitled200.jpg",
-      "featured": true
+      "size": "large"
     },
     {
       "image": "/images/artworks/untitled193restored.jpg",
-      "featured": false
+      "size": "normal"
     }
   ]
 }

@@ -84,10 +84,17 @@ content:
             options:
               media: images
               path: images/artworks
-          - name: featured
-            label: Show bigger
-            description: Gives this piece two columns in the portfolio grid. It is still shown at its real shape, with nothing cropped.
-            type: boolean
+          - name: size
+            label: Size
+            description: Large spans two rows, so it is about twice as tall and wide. The picture keeps its real shape and is not cropped.
+            type: select
+            default: normal
+            options:
+              values:
+                - name: normal
+                  label: Normal
+                - name: large
+                  label: Large
 
   - name: commissions
     label: Commissions
@@ -149,10 +156,6 @@ content:
     path: content/contact.json
     format: json
     fields:
-      - name: email
-        label: Email address
-        description: The first field in Contact. Type the address only, such as name@example.com. It is shown as the envelope icon. Leave it empty to hide the envelope.
-        type: string
       - name: buttonLabel
         label: Button text
         description: The button under the commission slides.
@@ -160,25 +163,97 @@ content:
       - name: contactText
         label: Text above the icons
         type: string
-      - name: links
-        label: Social links
-        description: Drag to reorder. Instagram, TikTok, Reddit, Ko-fi, X, and YouTube get their own icons. Put email in the Email address field.
+      - name: instagram
+        label: Instagram
         type: object
-        list:
-          collapsible:
-            collapsed: true
-            summary: "{label}"
         fields:
-          - name: label
-            label: Name
-            type: string
-            required: true
+          - name: show
+            label: Show
+            description: On shows the Instagram icon in the header, the phone menu, and the contact list. Off hides it everywhere.
+            type: boolean
+            default: true
           - name: url
             label: Link
-            description: Must start with https://
+            description: Leave empty to hide this icon, even when Show is on.
             type: string
-            required: true
-            pattern: ^https?://.+
+      - name: tiktok
+        label: TikTok
+        type: object
+        fields:
+          - name: show
+            label: Show
+            description: On shows the TikTok icon in the header, the phone menu, and the contact list. Off hides it everywhere.
+            type: boolean
+            default: true
+          - name: url
+            label: Link
+            description: Leave empty to hide this icon, even when Show is on.
+            type: string
+      - name: reddit
+        label: Reddit
+        type: object
+        fields:
+          - name: show
+            label: Show
+            description: On shows the Reddit icon in the header, the phone menu, and the contact list. Off hides it everywhere.
+            type: boolean
+            default: true
+          - name: url
+            label: Link
+            description: Leave empty to hide this icon, even when Show is on.
+            type: string
+      - name: kofi
+        label: Ko-fi
+        type: object
+        fields:
+          - name: show
+            label: Show
+            description: On shows the Ko-fi icon in the header, the phone menu, and the contact list. Off hides it everywhere.
+            type: boolean
+            default: true
+          - name: url
+            label: Link
+            description: Leave empty to hide this icon, even when Show is on.
+            type: string
+      - name: email
+        label: Email
+        type: object
+        fields:
+          - name: show
+            label: Show
+            description: On shows the envelope in the header, the phone menu, and the contact list. Off hides it everywhere.
+            type: boolean
+            default: true
+          - name: url
+            label: Address
+            description: The address only, such as name@example.com. Leave empty to hide the envelope, even when Show is on.
+            type: string
+      - name: youtube
+        label: YouTube
+        type: object
+        fields:
+          - name: show
+            label: Show
+            description: On shows the YouTube icon in the header, the phone menu, and the contact list. Off hides it everywhere.
+            type: boolean
+            default: true
+          - name: url
+            label: Link
+            description: Paste the channel link. Leave empty to hide this icon, even when Show is on.
+            type: string
+      - name: patreon
+        label: Patreon
+        type: object
+        fields:
+          - name: show
+            label: Show
+            description: On shows the Patreon icon in the header, the phone menu, and the contact list. Off hides it everywhere.
+            type: boolean
+            default: true
+          - name: url
+            label: Link
+            description: Paste the page link. Leave empty to hide this icon, even when Show is on.
+            type: string
 
   - name: site
     label: Site settings
