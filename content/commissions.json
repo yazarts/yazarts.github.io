@@ -34,7 +34,10 @@
       "notes": "Example: replace with your own art."
     },
     {
-      "name": "Backgrounds"
+      "name": "Backgrounds",
+      "photos": [
+        "/images/IMG_1692.jpeg"
+      ]
     }
   ]
 }
