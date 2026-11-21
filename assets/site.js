@@ -877,7 +877,7 @@
         const ar = z && z[0] && z[1] ? z[0] / z[1] : '';
         const dim = z && z[0] ? ` width="${z[0]}" height="${z[1]}"` : '';
         const w = [240, 210, 190][i] || 200;
-        return `<span class="card c${i}" data-i="${i}" style="width:${w}px;${ar ? 'aspect-ratio:' + ar + ';' : ''}--ar:${ar || 1}"><img src="${esc(thumb(src))}" alt=""${dim} decoding="async" loading="${load}" draggable="false"></span>`;
+        return `<span class="card c${i}" data-i="${i}" style="width:${w}px;${ar ? 'aspect-ratio:' + ar + ';--ar:' + ar + ';' : ''}"><img src="${esc(thumb(src))}" alt=""${dim} decoding="async" loading="${load}" draggable="false"></span>`;
       }).join('');
       const label = imgs.length > 1 ? `View ${imgs.length} ${name || 'example'} photos full screen` : `View the ${name || 'example'} photo full screen`;
       return `<button class="tier-open" type="button" aria-label="${esc(label)}"><span class="stack ${imgs.length > 1 ? 'multi n' + n : 'n1'}">${cards}</span></button>`;

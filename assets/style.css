@@ -463,30 +463,47 @@ html.intro-on,html.intro-on body{overflow:hidden}
   .stack.multi .card{transition:none}
   .lightbox.lb-wait::after{animation:none}
 }
-/* Phone: keep the fanned photos inside the card. The front picture stays whole; the ones behind only peek. */
+/* Phone: the front photo is a normal block at its own shape, so its border hugs the picture.
+   A relative span stayed inline, and that inline border drew the white ticks while the photo painted past it.
+   Photos behind only peek, and the panel clips them so they stay inside the card. */
 @media (max-width:720px){
-  .tiers{overflow:visible}
-  .tier-media{height:auto;overflow:visible;padding:18px 22px 10px}
+  .tiers{overflow:clip}
+  .tier-media{height:auto;overflow:clip;padding:14px 16px 10px}
   .tier-open{width:100%;height:auto;align-self:center}
   .stack{height:auto;min-height:0}
-  .stack.multi .card{height:auto!important;max-height:none}
+  .stack.multi .card,
+  .tier.on .stack.multi .card,
+  .tier.on .stack.multi:hover .card,
+  .tier.on .stack.multi:active .card{
+    display:block;height:auto!important;max-height:none;overflow:hidden;border-radius:16px;aspect-ratio:auto!important;
+  }
+  .stack.multi .card img{display:block;width:100%;height:auto;max-width:100%;max-height:none;object-fit:contain;border-radius:0}
   .stack.multi .c0,
   .tier.on .stack.multi .c0,
   .tier.on .stack.multi:hover .c0,
   .tier.on .stack.multi:active .c0{
     position:relative;left:auto;top:auto;z-index:3;width:100%!important;max-width:100%;
-    margin:0 auto;transform:none;aspect-ratio:var(--ar,auto);
+    margin:0;transform:none!important;aspect-ratio:auto;
   }
   .stack.multi .c1,
   .tier.on .stack.multi .c1,
   .tier.on .stack.multi:hover .c1,
   .tier.on .stack.multi:active .c1{
-    position:absolute;z-index:1;width:90%!important;left:50%;top:50%;transform:translate(-50%,-50%) rotate(1.2deg);
+    position:absolute;z-index:1;width:94%!important;left:50%;top:50%;
+    transform:translate(-54%,-53%) rotate(-2.4deg)!important;
   }
   .stack.multi .c2,
   .tier.on .stack.multi .c2,
   .tier.on .stack.multi:hover .c2,
   .tier.on .stack.multi:active .c2{
-    position:absolute;z-index:2;width:90%!important;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-1deg);
+    position:absolute;z-index:2;width:94%!important;left:50%;top:50%;
+    transform:translate(-46%,-47%) rotate(2.2deg)!important;
   }
+  .stack.n1{display:flex;align-items:center;justify-content:center;height:auto}
+  .stack.n1 .card,
+  .tier.on .stack.n1 .card{
+    position:relative;left:auto;top:auto;display:block;width:100%!important;height:auto!important;
+    max-width:100%;max-height:none;margin:0;transform:none!important;overflow:hidden;background:transparent;
+  }
+  .stack.n1 .card img{display:block;width:100%;height:auto;max-width:100%;max-height:none;object-fit:contain;border-radius:16px}
 }
