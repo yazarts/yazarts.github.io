@@ -925,7 +925,7 @@
         <div class="tier-text">
           <h3 class="tier-name">${letters(t.name)}</h3>
           ${t.description ? `<p class="tier-desc">${esc(t.description)}</p>` : ''}
-          ${t.notes ? `<p class="tier-notes">${esc(t.notes)}</p>` : ''}
+          ${String(t.notes || '').trim() ? `<p class="tier-notes">${esc(String(t.notes).trim())}</p>` : ''}
         </div></article>`).join('');
       stage.querySelectorAll('.tier-name').forEach(h => h.querySelectorAll('.ch').forEach((c, i) => c.style.setProperty('--i', i)));
       stage.querySelectorAll('.stack img').forEach(im => {

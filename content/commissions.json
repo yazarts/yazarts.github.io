@@ -1,6 +1,6 @@
 {
   "open": true,
-  "openText": "Commissions are open! Message me on my socials bellow with your ideas and I'll happily get back to you. You can also support me and my work on Ko-fi.",
+  "openText": "Commissions are open! Message me on my socials below with your ideas and I'll happily get back to you. You can also support me and my work on Ko-fi.",
   "closedText": "Commissions are closed for now. Follow me on Instagram or TikTok to hear when they reopen, or support my work on Ko-fi.",
   "tiers": [
     {
@@ -11,7 +11,7 @@
         "/images/Untitled156.jpg",
         "/images/artworks/img1639.jpeg"
       ],
-      "notes": "Example: replace with your own art."
+      "notes": ""
     },
     {
       "name": "Half Body",
@@ -21,7 +21,7 @@
         "/images/Untitled174.jpg",
         "/images/Untitled176.jpg"
       ],
-      "notes": "Example: replace with your own art."
+      "notes": ""
     },
     {
       "name": "Full Body Character",
@@ -31,7 +31,7 @@
         "/images/artworks/img1593.jpeg",
         "/images/artworks/img1636.jpeg"
       ],
-      "notes": "Example: replace with your own art."
+      "notes": ""
     }
   ]
 }
