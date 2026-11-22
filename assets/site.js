@@ -121,21 +121,37 @@
     if (vv && Math.abs(vv.offsetLeft) > 0.5) window.scrollTo(0, y);
   }
   const pinLater = () => { pinX(); requestAnimationFrame(pinX); [50, 150, 400, 800].forEach(ms => setTimeout(pinX, ms)); };
-  // Every picture is harder to save: no context menu, no drag, no iOS long-press sheet.
-  // Text can still be selected, and links, buttons, the menu, the viewer and swipes still work.
-  const mediaTarget = (el) => el && el.closest && el.closest('img, svg, video, canvas, picture');
-  addEventListener('contextmenu', (e) => { if (mediaTarget(e.target)) e.preventDefault(); }, true);
-  addEventListener('dragstart', (e) => { if (mediaTarget(e.target)) e.preventDefault(); }, true);
-  addEventListener('selectstart', (e) => { if (mediaTarget(e.target)) e.preventDefault(); }, true);
+  // Nothing on the page is offered as a file to save. Taps, links, swipe and the viewer pinch still work.
+  const blockSave = (e) => { e.preventDefault(); };
+  addEventListener('contextmenu', blockSave, true);
+  addEventListener('dragstart', blockSave, true);
+  addEventListener('selectstart', blockSave, true);
+  addEventListener('keydown', (e) => {
+    const key = String(e.key || '').toLowerCase();
+    if (!(e.ctrlKey || e.metaKey)) return;
+    if (key === 's' || key === 'u' || (key === 'i' && e.shiftKey)) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
   function shieldArt(root) {
-    (root || document).querySelectorAll('img, svg, video, canvas').forEach(el => {
+    const scope = root && root.nodeType === 1 ? root : document;
+    const list = scope.matches?.('img, svg, video, audio, canvas, picture') ? [scope] : [];
+    scope.querySelectorAll?.('img, svg, video, audio, canvas, picture').forEach(el => list.push(el));
+    list.forEach(el => {
       el.draggable = false;
-      if (el.setAttribute) el.setAttribute('draggable', 'false');
+      el.setAttribute?.('draggable', 'false');
       el.style.webkitTouchCallout = 'none';
       el.style.webkitUserDrag = 'none';
       el.style.webkitUserSelect = 'none';
       el.style.userSelect = 'none';
+      if (el.tagName === 'AUDIO' || el.tagName === 'VIDEO') {
+        el.controls = false;
+        el.removeAttribute('controls');
+        el.setAttribute('controlsList', 'nodownload');
+        el.setAttribute('disableremoteplayback', '');
+      }
     });
+  }
+  if ('MutationObserver' in window) {
+    new MutationObserver(recs => recs.forEach(r => r.addedNodes.forEach(n => { if (n.nodeType === 1) shieldArt(n); }))).observe(document.documentElement, { childList: true, subtree: true });
   }
   addEventListener('orientationchange', pinLater);
   addEventListener('resize', pinLater);
@@ -461,7 +477,8 @@
     }
     function setBg(src) {
       if (!src) { btn.hidden = true; return; }
-      bg.src = src; bg.loop = true; bg.preload = 'auto'; btn.hidden = false; ui();
+      bg.controls = false; bg.removeAttribute('controls'); bg.setAttribute('controlsList', 'nodownload');
+      bg.src = src; bg.loop = true; bg.preload = 'none'; btn.hidden = false; ui();
       if (!on) return;
       start().catch(() => { });
       waitForGesture();
@@ -770,7 +787,7 @@
     const im = curImg();
     if (pts.size === 1) {
       multi = false; grab(); const z = zs(im);
-      st = { x: e.clientX, y: e.clientY, t: performance.now(), off: offset, tx: z.tx, ty: z.ty, onImg: e.target === im, type: e.pointerType };
+      st = { x: e.clientX, y: e.clientY, t: performance.now(), off: offset, tx: z.tx, ty: z.ty, onImg: e.target === im || !!e.target.closest?.('.lb-frame'), type: e.pointerType };
       samples = [{ x: e.clientX, t: st.t }]; gest = z.s > 1.01 ? 'pan' : 'pending';
     } else if (pts.size === 2) {
       multi = true;
