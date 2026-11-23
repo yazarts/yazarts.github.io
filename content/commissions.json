@@ -10,8 +10,7 @@
         "/images/img1687.jpeg",
         "/images/Untitled156.jpg",
         "/images/artworks/img1639.jpeg"
-      ],
-      "notes": ""
+      ]
     },
     {
       "name": "Half Body",
@@ -20,8 +19,7 @@
         "/images/artworks/img1696.jpeg",
         "/images/Untitled174.jpg",
         "/images/Untitled176.jpg"
-      ],
-      "notes": ""
+      ]
     },
     {
       "name": "Full Body Character",
@@ -30,8 +28,14 @@
         "/images/Untitled168.jpg",
         "/images/artworks/img1593.jpeg",
         "/images/artworks/img1636.jpeg"
-      ],
-      "notes": ""
+      ]
+    },
+    {
+      "name": "Merch",
+      "description": "Bla bla bla",
+      "photos": [
+        "/images/commissions/img1744.jpeg"
+      ]
     }
   ]
 }
