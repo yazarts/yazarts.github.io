@@ -30,6 +30,32 @@ content:
         type: image
         options:
           media: images
+      - name: heroPositionX
+        label: Hero position (horizontal)
+        description: Which side of the background picture stays in view. Center is the usual look.
+        type: select
+        default: center
+        options:
+          values:
+            - name: left
+              label: Left
+            - name: center
+              label: Center
+            - name: right
+              label: Right
+      - name: heroPositionY
+        label: Hero position (vertical)
+        description: Which part of the background picture stays in view. Center is the usual look.
+        type: select
+        default: center
+        options:
+          values:
+            - name: top
+              label: Top
+            - name: center
+              label: Center
+            - name: bottom
+              label: Bottom
       - name: heroTitle
         label: Title
         description: The large heading, such as Welcome.

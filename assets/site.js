@@ -174,6 +174,14 @@
       // a 1200 px preview for small screens, the original for big / high-density ones (the browser picks)
       if (t !== orig && z) { const tw = z[0] >= z[1] ? 1200 : Math.round(1200 * z[0] / z[1]); heroBg.srcset = `${t} ${tw}w, ${orig} ${z[0]}w`; heroBg.sizes = '100vw'; }
       heroBg.src = orig;
+      const spot = (v, words) => {
+        const s = String(v ?? '').trim().toLowerCase();
+        if (words[s]) return words[s];
+        const n = Number(s);
+        if (s !== '' && !Number.isNaN(n)) return Math.max(0, Math.min(100, n)) + '%';
+        return 'center';
+      };
+      heroBg.style.objectPosition = spot(w.heroPositionX, { left: 'left', center: 'center', centre: 'center', middle: 'center', right: 'right' }) + ' ' + spot(w.heroPositionY, { top: 'top', center: 'center', centre: 'center', middle: 'center', bottom: 'bottom' });
       const ok = () => hero.classList.add('bg-ok');
       heroBg.complete && heroBg.naturalWidth ? ok() : heroBg.addEventListener('load', ok, { once: true });
       heroBg.addEventListener('error', () => hero.classList.add('no-bg'), { once: true });
