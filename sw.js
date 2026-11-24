@@ -1,5 +1,5 @@
 /* yazarts service worker. Bump VERSION to drop the previous caches on the next visit. */
-const VERSION = '18';
+const VERSION = '19';
 const SHELL = 'yazarts-shell-' + VERSION;
 const CONTENT = 'yazarts-content-' + VERSION;
 const KEEP = new Set([SHELL, CONTENT]);
